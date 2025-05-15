@@ -1,6 +1,8 @@
 import { Modal, Accordion, Text } from '@mantine/core';
 import { Order } from '../types';
 import { translateOrderShipping } from '../utils/translate';
+import { useModal } from "../context/ModalContext";
+import { useEffect } from 'react';
 
 interface AdminOrderMoralProps {
   order: Order;
@@ -9,6 +11,12 @@ interface AdminOrderMoralProps {
 }
 
 const AdminOrderModal = ({ order, opened, onClose }: AdminOrderMoralProps) => {
+  const { setModalOpen } = useModal();
+
+  useEffect(() => {
+    setModalOpen(opened); // amikor nyitva van, állítsd be
+  }, [opened]);
+
   return (
     <Modal opened={opened} onClose={onClose} title={`Rendelés részletezés - Azonosító: ${order.id}`} size="lg" centered>
       <Accordion>

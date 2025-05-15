@@ -1,12 +1,28 @@
 import api from "./api";
-import { OrderRequestDTO, OrderResponseDTO, OrderData } from "../types";
+import { OrderRequestDTO, OrderResponseDTO, OrderData, GuestOrderRequestDTO } from "../types";
 
 const OrderService = {
-  createOrder : async (orderData: OrderRequestDTO): Promise<OrderResponseDTO> => {
-    const response = await api.post<OrderResponseDTO>("/api/orders", orderData);
+  createOrder: async (orderData: OrderRequestDTO | GuestOrderRequestDTO): Promise<OrderResponseDTO> => {
+    const endpoint = 'userId' in orderData ? "/api/orders" : "/api/orders/guest-orders";
+    const guestToken = localStorage.getItem("guest_token");
+  
+    const headers = guestToken && !('userId' in orderData)
+      ? { Authorization: `Bearer ${guestToken}` }
+      : {};
+  
+    const response = await api.post<OrderResponseDTO>(endpoint, orderData, { headers });
     return response.data;
   },
 
+  createGuestOrder: async (orderData: any): Promise<any> => {
+    const guestToken = localStorage.getItem("guest_token");
+    const headers = guestToken
+      ? { Authorization: `Bearer ${guestToken}` }
+      : {};
+  
+    const response = await api.post("/api/orders/guest-orders", orderData, { headers });
+    return response.data;
+  },
 
   redirectToPayPal: async (orderId: string) => {
     return api.get(`/api/orders/paypal/${orderId}`);

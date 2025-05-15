@@ -22,7 +22,8 @@ import '@mantine/dates/styles.css';
 import AdminBar from './AdminBar';
 
 const AdminCouponsPage = () => {
-  const { coupons, loading, error } = useCoupon(); // ✅ A hook-ot használjuk!
+  const { coupons: initialCoupons, loading, error } = useCoupon();
+const [coupons, setCoupons] = useState(initialCoupons || []);
   const [modalOpen, setModalOpen] = useState(false);
 
   // Új kuponhoz állapot
@@ -31,6 +32,13 @@ const AdminCouponsPage = () => {
   const [validFrom, setValidFrom] = useState<Date | null>(null);
   const [validUntil, setValidUntil] = useState<Date | null>(null);
   const [firstOrderOnly, setFirstOrderOnly] = useState(false);
+
+
+  useEffect(() => {
+    if (initialCoupons) {
+      setCoupons(initialCoupons);
+    }
+  }, [initialCoupons]);
 
   // 🔄 Új kupon hozzáadása
   const handleCreateCoupon = async () => {
@@ -42,11 +50,10 @@ const AdminCouponsPage = () => {
         validUntil: validUntil ? validUntil.toISOString() : null,
         firstOrderOnly,
       };
-
-      await CouponService.createCoupon(newCoupon);
+      const created = await CouponService.createCoupon(newCoupon);
+      setCoupons((prev) => [...prev, created]);
       setModalOpen(false);
       resetForm();
-      window.location.reload(); // Frissítjük az oldalt ✅
     } catch (error) {
       console.error('Hiba a kupon létrehozásakor:', error);
     }
@@ -56,7 +63,7 @@ const AdminCouponsPage = () => {
   const handleDeleteCoupon = async (id: number) => {
     try {
       await CouponService.deleteCoupon(id);
-      window.location.reload(); // Frissítjük az oldalt ✅
+      setCoupons((prev) => prev.filter(coupon => coupon.id !== id));
     } catch (error) {
       console.error('Hiba a kupon törlésekor:', error);
     }
@@ -144,6 +151,7 @@ const AdminCouponsPage = () => {
           opened={modalOpen}
           onClose={() => setModalOpen(false)}
           title="Új kupon létrehozása"
+          centered
         >
           <TextInput
             label="Kuponkód"

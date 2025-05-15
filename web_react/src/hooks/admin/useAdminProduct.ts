@@ -2,10 +2,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AdminProductService from "../../services/admin/AdminProductService";
 import { AdminProduct } from "../../types";
 
-export const useAdminProducts = () => {
-  return useQuery<AdminProduct[], Error>({
-    queryKey: ["adminProducts"],
-    queryFn: AdminProductService.getAllProducts,
+export const useAdminProducts = (page: number = 0, size: number = 12) => {
+  return useQuery({
+    queryKey: ["adminProducts", page],
+    queryFn: () => AdminProductService.getAllProducts(page, size),
   });
 };
 

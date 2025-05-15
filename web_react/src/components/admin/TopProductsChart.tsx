@@ -2,7 +2,12 @@ import { Card, Title } from "@mantine/core";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { useTopProducts } from "../../hooks/admin/useTopProducts";
 
-export default function TopProductsChart() {
+interface Props {
+  width?: number;
+  height?: number;
+}
+
+export default function TopProductsChart({ width = 300, height = 300 }: Props) {
   const { topProducts, loading, error } = useTopProducts();
 
   if (loading) return <p>Betöltés...</p>;

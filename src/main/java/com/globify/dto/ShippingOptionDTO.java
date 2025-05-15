@@ -19,6 +19,9 @@ public class ShippingOptionDTO {
     @NotNull(message = "Price cannot be null")
     private BigDecimal price;
 
+    public ShippingOptionDTO() {
+    }
+
     public ShippingOptionDTO(Long id, ShippingMethod method, BigDecimal price) {
         this.id = id;
         this.method = method;

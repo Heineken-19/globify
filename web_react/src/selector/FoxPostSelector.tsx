@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Paper, Text, Button, Container } from "@mantine/core";
+import { Paper, Text, Button, Container, rem } from "@mantine/core";
 import { FoxPostPoint, useFavoritePickup } from "../hooks/useFavoritePickup";
 import {useNotification} from "../context/NotificationContext";
+import { useMediaQuery } from '@mantine/hooks';
 
 interface Props {
   setSelectedPoint: (point: FoxPostPoint) => void;
@@ -12,6 +13,7 @@ const FoxPostSelector: React.FC<Props> = ({ setSelectedPoint }) => {
   const [pointData, setPointData] = useState<FoxPostPoint | null>(null);
   const { favoritePoint, saveFavorite } = useFavoritePickup();
   const { showSuccess } = useNotification();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   useEffect(() => {
     // ✅ Előzőleg kiválasztott pont betöltése (localStorage-ből)
@@ -95,18 +97,35 @@ const FoxPostSelector: React.FC<Props> = ({ setSelectedPoint }) => {
   };
 
   return (
-    <Container size="lg" style={{ maxWidth: "1200px", margin: "0 auto" }}>
+    <Container size="lg" 
+    style={{ 
+      maxWidth: isMobile ? "100%" : "1200px", 
+      margin: "0 auto",
+      padding: isMobile ? rem(10) : rem(20),
+      }}>
       {/* ✅ Ha van kedvenc pont */}
       {pointData ? (
-        <Paper shadow="xs" p="md" mb="md">
-          <Text fw={600}>Kiválasztott automata:</Text>
-          <Text>{pointData.name}</Text>
-          <Text>{pointData.city}, {pointData.zip}</Text>
-          <Text>{pointData.address}</Text>
-          <Button mt="md" variant="outline" onClick={() => setPointData(null)}>
+        <Paper 
+          shadow="xs"
+          p={isMobile ? rem(12) : rem(16)}
+          mb="md"
+          style={{
+            borderRadius: rem(10),
+          }}
+          >
+          <Text fw={600} size={isMobile ? "sm" : "md"}>Kiválasztott automata:</Text>
+          <Text size={isMobile ? "xs" : "sm"}>{pointData.name}</Text>
+          <Text size={isMobile ? "xs" : "sm"}>{pointData.city}, {pointData.zip}</Text>
+          <Text size={isMobile ? "xs" : "sm"}>{pointData.address}</Text>
+          <Button mt="md" variant="outline" onClick={() => setPointData(null)} fullWidth={isMobile}  style={{
+              fontSize: isMobile ? rem(12) : rem(14),
+              marginRight: isMobile ? rem(0) : rem(8),
+            }}>
             Másik csomagpont választása
           </Button>
-          <Button mt="md" onClick={handleSaveFavorite} color="blue">
+          <Button mt="md" onClick={handleSaveFavorite} color="blue"  style={{
+              fontSize: isMobile ? rem(12) : rem(14),
+            }}>
             Kedvencként mentés
           </Button>
         </Paper>
@@ -117,8 +136,12 @@ const FoxPostSelector: React.FC<Props> = ({ setSelectedPoint }) => {
         loading="lazy"
         sandbox="allow-scripts allow-same-origin allow-popups"
         src="https://cdn.foxpost.hu/apt-finder/v1/app/?desktop_height=450"
-        width="1200"
-        height="800"
+        width={isMobile ? "100%" : "1200"}
+        height={isMobile ? "400" : "800"}
+        style={{
+          borderRadius: rem(8),
+          marginTop: isMobile ? rem(10) : rem(20),
+        }}
       ></iframe>
       )}
     </Container>

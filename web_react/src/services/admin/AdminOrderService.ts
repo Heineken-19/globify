@@ -8,4 +8,13 @@ export const getOrders = async (): Promise<Order[]> => {
 
 export const updateOrderStatus = async (id: number, status: string): Promise<void> => {
   await api.put(`/api/admin/orders/${id}/status`, { status });
+
+  // Ha a státusz "PAID" vagy "CONFIRMED", akkor küldjünk email és számla kérelmeket
+  if (status === "PAID" || status === "CONFIRMED") {
+    await api.post(`/api/admin/orders/${id}/queue-email`);
+    await api.post(`/api/admin/orders/${id}/queue-invoice`);
+  }
 };
+
+
+

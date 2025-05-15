@@ -1,37 +1,25 @@
-import { useEffect, useState } from "react";
-import { Container, Grid, Paper, Text, Image, Stack, Button, Group, Loader } from "@mantine/core";
-import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import { useEffect, useState, JSX } from "react";
+import { Container, Grid, Paper, Text, Image, Stack, ActionIcon, Group, Loader } from "@mantine/core";
+import { useSaleProducts, usePopularProducts } from "../hooks/useFeaturedProducts";
+import { 
+  IconChevronLeft, 
+  IconChevronRight,   
+  IconBox,
+  IconLeaf,
+  IconFlame,
+  IconCandle,
+  IconTool,
+  IconBraces,
+  IconStar,
+  IconPercentage,
+  IconStarFilled,
+} from "@tabler/icons-react";
 import { useCategory } from "../hooks/useCategory";
 import { useNavigate } from "react-router-dom";
+import { API_URL } from '../config/config';
 
 
-// 🔹 Mock akciós termékek
-const mockSaleProducts = [
-  {
-    id: 1,
-    name: "Akciós termék 1",
-    description: "Ez egy rövid leírás az akciós termékről.",
-    image: "/images/sale-1.jpg",
-  },
-  {
-    id: 2,
-    name: "Akciós termék 2",
-    description: "Ez egy rövid leírás az akciós termékről.",
-    image: "/images/sale-2.jpg",
-  },
-  {
-    id: 3,
-    name: "Akciós termék 3",
-    description: "Ez egy rövid leírás az akciós termékről.",
-    image: "/images/sale-3.jpg",
-  },
-  {
-    id: 3,
-    name: "Akciós termék 4",
-    description: "Ez egy rövid leírás az akciós termékről.",
-    image: "/images/sale-4.jpg",
-  },
-];
+
 
 
 const HomePage = () => {
@@ -39,9 +27,20 @@ const HomePage = () => {
   const [banners, setBanners] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const navigate = useNavigate();
+  const { data: saleProducts = [] } = useSaleProducts();
+const { data: popularProducts = [] } = usePopularProducts();
+
+const [saleIndex, setSaleIndex] = useState(0);
+const [popularIndex, setPopularIndex] = useState(0);
+
+const visibleSale = saleProducts.slice(saleIndex, saleIndex + 3);
+const visiblePopular = popularProducts.slice(popularIndex, popularIndex + 3);
 
   const allCategories = [
     { id: null, name: "Minden termék" }, 
+    { id: "new", name: "Újdonságaink" },
+    { id: "sale", name: "Akciós termékek" },
+    { id: "popular", name: "Népszerű termékek" },
     ...categories
   ];
 
@@ -70,18 +69,36 @@ const HomePage = () => {
   };
 
   const handleCategoryClick = (categoryName: string | null) => {
-    if (categoryName) {
-    navigate(`/products?category=${encodeURIComponent(categoryName)}`);
-  } else {
-    navigate(`/products`); // 🔥 Ha null → Minden terméket megjelenítünk
-  }
+    if (categoryName === "Újdonságaink") {
+      navigate("/products?category=new");
+    } else if (categoryName === "Akciós termékek") {
+      navigate("/products?category=sale");
+    } else if (categoryName === "Minden termék" || categoryName === null) {
+      navigate("/products");
+    } else if (categoryName === "Népszerű termékek") {
+        navigate("/products?category=Népszerű termékek");
+    } else {
+      navigate(`/products?category=${encodeURIComponent(categoryName)}`);
+    }
+  };
+
+const iconMap: Record<string, JSX.Element> = {
+  "Minden termék": <IconBox size={18} color="#16b040" />,
+  "Újdonságaink": <IconStar size={18} color="#16b040" />,
+  "Akciós termékek": <IconPercentage size={18} color="#16b040" />,
+  "Füstölők": <IconFlame size={18} color="#16b040" />,
+  "Gyertyák": <IconCandle size={18} color="#16b040" />,
+  "Karkötők": <IconBraces size={18} color="#16b040" />,
+  "Kiegészítők": <IconTool size={18} color="#16b040" />,
+  "Növények": <IconLeaf size={18} color="#16b040" />,
+  "Népszerű termékek": <IconStarFilled size={18} color="#16b040" />,
 };
 
   return (
+    
     <Container size="xl" my="lg">
       <Grid gutter="md">
-        {/* Bal oldali menü */}
-        <Grid.Col span={3}>
+        <Grid.Col span={{ base: 12, md: 3 }} visibleFrom="md">
           <Paper shadow="sm" p="md" radius="md">
             <Stack>
               <Text size="lg" fw={700}>Kategóriák</Text>
@@ -90,14 +107,17 @@ const HomePage = () => {
               ) : error ? (
                 <Text color="red">{error}</Text>
               ) : (
-                allCategories.map((category) => (
-                  <Text
-                  key={category.id ?? "all"}
+                allCategories.map((category, idx) => (
+                  <Group
+                  key={`${category.id ?? "all"}-${idx}`}
                   onClick={() => handleCategoryClick(category.name || null)}
-                  style={{ cursor: "pointer" }}
+                  style={{ cursor: "pointer",  gap: "8px", alignItems: "center" }}
                   >
+                    {iconMap[category.name || ""] || <IconBox size={18} color="#16b040" />}
+                    <Text style={{ fontSize: "14px", fontWeight: 500 }}>
                     {category.name}
                   </Text>
+                  </Group>
                 ))
               )}
             </Stack>
@@ -105,7 +125,7 @@ const HomePage = () => {
         </Grid.Col>
 
         {/* Hirdető szalag */}
-        <Grid.Col span={9}>
+        <Grid.Col span={{ base: 12, md: 9 }}>
           <Paper shadow="md" radius="md" style={{ position: "relative", overflow: "hidden" }}>
             <Image
               src={banners[currentIndex]}
@@ -114,7 +134,7 @@ const HomePage = () => {
               style={{ objectFit: "cover", width: "100%" }}
             />
             {/* 🔹 Balra nyíl */}
-            <Button
+            <ActionIcon
               onClick={goToPrev}
               style={{
                 position: "absolute",
@@ -122,14 +142,14 @@ const HomePage = () => {
                 left: 10,
                 transform: "translateY(-50%)",
                 zIndex: 10,
-                backgroundColor: "rgba(0,0,0,0.5)",
-                color: "white",
+                background: "none",
+                color: "black",
               }}
             >
-              <IconChevronLeft size={20} />
-            </Button>
+              <IconChevronLeft size={50} />
+              </ActionIcon>
             {/* 🔹 Jobbra nyíl */}
-            <Button
+            <ActionIcon
               onClick={goToNext}
               style={{
                 position: "absolute",
@@ -137,12 +157,12 @@ const HomePage = () => {
                 right: 10,
                 transform: "translateY(-50%)",
                 zIndex: 10,
-                backgroundColor: "rgba(0,0,0,0.5)",
-                color: "white",
+                background: "none",
+                color: "black",
               }}
             >
-              <IconChevronRight size={20} />
-            </Button>
+              <IconChevronRight size={50} />
+              </ActionIcon>
             {/* 🔹 Navigációs pontok */}
             <Group justify="center" mt="sm" style={{ position: "absolute", bottom: 10, left: 0, right: 0 }}>
               {banners.map((_, index) => (
@@ -163,25 +183,109 @@ const HomePage = () => {
           </Paper>
         </Grid.Col>
 
-        {/* Akciós termékek */}
-        <Grid.Col span={12}>
-        <Text size="xl" fw={700} mb="md">Akciós termékek</Text>
-          <Grid gutter="md">
-          {mockSaleProducts.map((product) => (
-              <Grid.Col key={product.id} span={4}>
-                <Paper shadow="xs" p="md" radius="md">
-                  <Image
-                    src={product.image}
-                    height={150}
-                    alt={product.name}
-                  />
-                  <Text fw={500} mt="sm">{product.name}</Text>
-                  <Text size="sm" color="dimmed">{product.description}</Text>
-                </Paper>
-              </Grid.Col>
-            ))}
-          </Grid>
-        </Grid.Col>
+
+ {/* 🔹 Akciós termékek */}
+<Grid.Col span={12}>
+  <Text size="xl" fw={700} mb="md"         
+      style={{
+          textAlign: "center",
+          marginBottom: 30,
+          fontSize: 26,
+          fontWeight: 600,
+          color: "#357a42",
+          display: "inline-block",
+          paddingBottom: 8,
+        }}>
+          Akciós termékek
+          </Text>
+  {saleProducts.length > 0 && (
+    <Group justify="center" gap="lg">
+      {saleProducts.length > 3 && (
+        <ActionIcon
+          onClick={() => setSaleIndex((prev) => Math.max(0, prev - 1))}
+          disabled={saleIndex === 0}
+          variant="filled"
+          color="green"
+        >
+          <IconChevronLeft />
+        </ActionIcon>
+      )}
+      <Grid gutter="md" justify="center" style={{ flex: 1 }}>
+        {visibleSale.map((product, index) => (
+          <Grid.Col key={`${product.id}-${index}`} span={4}>
+            <Paper shadow="xs" p="md" radius="md">
+              <Image src={`${API_URL}/uploads/products/${product.imageUrls?.[0] || 'default.jpg'}`} height={150} alt={product.name} />
+              <Text fw={500} mt="sm">{product.name}</Text>
+              <Text size="sm" color="dimmed">{product.title}</Text>
+            </Paper>
+          </Grid.Col>
+        ))}
+      </Grid>
+      {saleProducts.length > 3 && (
+        <ActionIcon
+          onClick={() => setSaleIndex((prev) => prev + 1)}
+          disabled={saleIndex + 3 >= saleProducts.length}
+          variant="filled"
+          color="green"
+        >
+          <IconChevronRight />
+        </ActionIcon>
+      )}
+    </Group>
+  )}
+</Grid.Col>
+
+{/* 🔹 Népszerű termékek */}
+<Grid.Col span={12}>
+  <Text size="xl" fw={700} mb="md"
+   style={{
+    textAlign: "center",
+    marginBottom: 30,
+    fontSize: 26,
+    fontWeight: 600,
+    color: "#357a42",
+    display: "inline-block",
+    paddingBottom: 8,
+  }}
+  >Népszerű termékek
+  </Text>
+  {popularProducts.length > 0 && (
+    <Group justify="center" gap="lg">
+      {popularProducts.length > 3 && (
+        <ActionIcon
+          onClick={() => setPopularIndex((prev) => Math.max(0, prev - 1))}
+          disabled={popularIndex === 0}
+          variant="filled"
+          color="green"
+        >
+          <IconChevronLeft />
+        </ActionIcon>
+      )}
+      <Grid gutter="md" justify="center" style={{ flex: 1 }}>
+        {visiblePopular.map((product, index) => (
+          <Grid.Col key={`${product.id}-${index}`} span={4}>
+            <Paper shadow="xs" p="md" radius="md">
+              <Image src={`${API_URL}/uploads/products/${product.imageUrls?.[0] || 'default.jpg'}`} height={150} alt={product.name} />
+              <Text fw={500} mt="sm">{product.name}</Text>
+              <Text size="sm" color="dimmed">{product.title}</Text>
+            </Paper>
+          </Grid.Col>
+        ))}
+      </Grid>
+      {popularProducts.length > 3 && (
+        <ActionIcon
+          onClick={() => setPopularIndex((prev) => prev + 1)}
+          disabled={popularIndex + 3 >= popularProducts.length}
+          variant="filled"
+          color="green"
+        >
+          <IconChevronRight />
+        </ActionIcon>
+      )}
+    </Group>
+  )}
+</Grid.Col>
+
       </Grid>
     </Container>
   );

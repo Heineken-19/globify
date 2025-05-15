@@ -51,10 +51,14 @@ public class AdminStatsController {
         return ResponseEntity.ok(adminStatsService.getLoginsCount(date));
     }
 
-    // 🔹 Heti / havi bevétel statisztika
-    @GetMapping("/revenue")
-    public ResponseEntity<Map<String, Object>> getRevenueStats(@RequestParam String period) {
-        return ResponseEntity.ok(adminStatsService.getRevenueStats(period));
+    @GetMapping("/monthly-revenue-last-5")
+    public ResponseEntity<List<Map<String, Object>>> getMonthlyRevenueLast5() {
+        return ResponseEntity.ok(adminStatsService.getMonthlyRevenueForLast5Months());
+    }
+
+    @GetMapping("/weekly-revenue-last-5")
+    public ResponseEntity<List<Map<String, Object>>> getWeeklyRevenueLast5() {
+        return ResponseEntity.ok(adminStatsService.getWeeklyRevenueForLast5Weeks());
     }
 
     // 🔹 Legtöbbet vásárolt termékek listázása

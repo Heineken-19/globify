@@ -1,11 +1,52 @@
-HELP.md
-.gradle
+# Gradle
+.gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
+.gradle/
+gradle/
+libs/
+logs/
+*.log
+*.hprof
 
-### STS ###
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+.vscode/
+
+# Maven
+.mvn/
+target/
+**/target/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Spring Boot Specific
+/target/
+/bin/
+/logs/
+/uploads/
+/debian-dev/
+/activemq/
+/duckdns/
+/globify/
+
+# IDEs and Editors
+/.idea/
+/.vscode/
+/*.iml
+/.gradle
+
+# Temp Files
+*.log
+*.hprof
+
+# STS
 .apt_generated
 .classpath
 .factorypath
@@ -17,21 +58,9 @@ bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
-### NetBeans ###
+# NetBeans
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
-
-### VS Code ###
-.vscode/

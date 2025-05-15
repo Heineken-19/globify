@@ -1,31 +1,23 @@
 import { useState, useEffect } from "react";
 import AdminService from "../../services/admin/AdminService";
-import { RevenueData } from "../../types";
+import { RevenueData, MonthlyRevenue, WeeklyRevenue } from "../../types";
 
 export function useRevenue() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [weeklyRevenue, setWeeklyRevenue] = useState<RevenueData | null>(null);
-  const [monthlyRevenue, setMonthlyRevenue] = useState<RevenueData | null>(null);
-
+  const [monthlyRevenues, setMonthlyRevenues] = useState<MonthlyRevenue[]>([]); // 🔹 Új: 5 havi adat
+  const [weeklyRevenues, setWeeklyRevenues] = useState<WeeklyRevenue[]>([]);
+  
   const getRevenue = async () => {
     setLoading(true);
     setError(null);
     try {
-      const weekly = await AdminService.getRevenueStats("weekly");
-      const monthly = await AdminService.getRevenueStats("monthly");
+      const last5Months = await AdminService.getMonthlyRevenueLast5();
+      const last5Weeks = await AdminService.getWeeklyRevenueLast5();
 
-      setWeeklyRevenue({
-        totalRevenue: weekly.totalRevenue || 0,
-        startDate: weekly.startDate || "", // Backend válaszból
-        endDate: weekly.endDate || "",
-      });
+      setMonthlyRevenues(last5Months);
+      setWeeklyRevenues(last5Weeks);
 
-      setMonthlyRevenue({
-        totalRevenue: monthly.totalRevenue || 0,
-        startDate: monthly.startDate || "",
-        endDate: monthly.endDate || "",
-      });
     } catch (err) {
       setError("Nem sikerült lekérni a bevételi adatokat.");
     } finally {
@@ -37,5 +29,5 @@ export function useRevenue() {
     getRevenue();
   }, []);
 
-  return { weeklyRevenue, monthlyRevenue, loading, error };
+  return { weeklyRevenues,  monthlyRevenues, loading, error };
 }

@@ -7,7 +7,7 @@ export const getUsers = async (): Promise<AdminUser[]> => {
 };
 
 export const updateUserRole = async (userId: number, role: string): Promise<void> => {
-  await api.put(`/api/admin/users/${userId}/role`, { role });
+  await api.put(`/api/admin/users/${userId}/role?role=${encodeURIComponent(role)}`);
 };
 
 export const deleteUser = async (userId: number): Promise<void> => {

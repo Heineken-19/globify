@@ -33,8 +33,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (StringUtils.hasText(token) && jwtUtil.isTokenValid(token, jwtUtil.extractUsername(token))) {
             String username = jwtUtil.extractUsername(token);
+            String role = jwtUtil.extractRole(token);
 
-
+            if ("GUEST".equalsIgnoreCase(role)) {
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(username, null, null);
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            } else {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
             if (userDetails != null) {
             UsernamePasswordAuthenticationToken authentication =
@@ -43,7 +49,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
             }
-        }
+        }}
 
         filterChain.doFilter(request, response);
     }

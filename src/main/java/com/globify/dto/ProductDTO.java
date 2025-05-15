@@ -11,9 +11,11 @@ import java.util.stream.Collectors;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.NoArgsConstructor;
 
 @Getter
 @Setter
+@NoArgsConstructor
 public class ProductDTO {
     private Long id;
     private String name;
@@ -26,6 +28,11 @@ public class ProductDTO {
     private String size;
     private String type;
     private String category;
+    private Boolean isNew;
+    private Boolean isSale;
+    private BigDecimal discountPercentage;
+    private Double mainSize;
+    private String slug;
 
     // Új mezők a ProductDetails miatt
     private String light;
@@ -68,7 +75,11 @@ public class ProductDTO {
         this.size = product.getSize();
         this.type = product.getType();
         this.category = product.getCategory() != null ? product.getCategory().getName() : null;
-
+        this.isNew = product.getIsNew();
+        this.isSale = product.getIsSale();
+        this.discountPercentage = product.getDiscountPercentage();
+        this.mainSize = product.getMainSize();
+        this.slug = product.getSlug();
         if (product.getProductDetails() != null) {
             this.light = product.getProductDetails().getLight();
             this.water = product.getProductDetails().getWater();
@@ -81,31 +92,4 @@ public class ProductDTO {
         return value != null ? value.doubleValue() : 0.0;
     }
 
-    public static ProductDTO fromEntity(OrderItem orderItem) {
-        if (orderItem == null) {
-            return null;
-        }
-        Product product = orderItem.getProduct();
-        ProductDetails details = product.getProductDetails();
-
-        return new ProductDTO(
-                product.getId(),
-                product.getName(),
-                product.getTitle(),
-                product.getDescription(),
-                product.getStock(),
-                product.getPrice(),
-                product.getImages().stream()
-                        .map(ProductImage::getImagePath)
-                        .collect(Collectors.toList()),
-                product.getAvailable(),
-                product.getSize(),
-                product.getType(),
-                product.getCategory() != null ? product.getCategory().getName() : null,
-                details != null ? details.getLight() : null,
-                details != null ? details.getWater() : null,
-                details != null ? details.getExtra() : null,
-                details != null ? details.getFact() : null
-        );
-    }
 }

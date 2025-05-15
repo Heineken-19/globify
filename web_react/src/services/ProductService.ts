@@ -1,11 +1,25 @@
 import api from "./api";
-import { Product } from "../types";
+import qs from "qs";
+import { Product, ProductPage } from "../types";
+import { ProductFilters } from "../hooks/useProductFilters";
 
 // 🔹 Összes termék lekérdezése
-export const getProducts = async (category?: string, searchTerm?: string): Promise<Product[]> => {
-  const params: any = {};
+export const getProducts = async (
+  category?: string,
+  searchTerm?: string,
+  page: number = 0,
+  size: number = 12,
+  filters?: ProductFilters,
+  isNew?: boolean,
+  isSale?: boolean,
+  isPopular?: boolean
+): Promise<ProductPage> => {
+  const params: any = {
+    page,
+    size,
+  };
 
-  if (category) {
+  if (category && category !== "new" && category !== "sale") {
     params.category = category;
   }
 
@@ -13,9 +27,35 @@ export const getProducts = async (category?: string, searchTerm?: string): Promi
     params.searchTerm = searchTerm;
   }
 
-  const response = await api.get("/api/products", { params });
+  if (isNew !== undefined) params.isNew = isNew;
+  if (isSale !== undefined) params.isSale = isSale;
+  if (isPopular !== undefined) params.isPopular = isPopular;
+
+  if (filters) {
+    if (filters.light) params.light = filters.light;
+    if (filters.water) params.water = filters.water;
+    if (filters.type) params.type = filters.type;
+    
+    if (filters.categories && filters.categories.length > 0) {
+      params.category = filters.categories;
+    }
+    if (filters.minPrice != null) params.minPrice = filters.minPrice;
+    if (filters.maxPrice != null) params.maxPrice = filters.maxPrice;
+
+    if (filters.sizeRange != null) {
+      params.minMainSize = filters.sizeRange[0];
+      params.maxMainSize = filters.sizeRange[1];
+    }
+  }
+
+  const response = await api.get("/api/products", {
+    params,
+    paramsSerializer: params => qs.stringify(params, { indices: false })
+  });
   return response.data;
 };
+
+
 
 // 🔹 Egyedi termék lekérdezése
 export const getProductById = async (id: number) => {
@@ -44,5 +84,10 @@ export const updateProduct = async (id: number, productData: any) => {
 // 🔹 Termék törlése
 export const deleteProduct = async (id: number) => {
   const response = await api.delete(`/api/products/${id}`);
+  return response.data;
+};
+
+export const getNewProducts = async (): Promise<Product[]> => {
+  const response = await api.get("/api/products/new");
   return response.data;
 };

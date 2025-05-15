@@ -29,6 +29,8 @@ public class UserProfileDTO {
     private List<AddressDTO> addresses;
     private List<BillingDTO> billingDetails;
     private String avatar;
+    private int rewardPoints;
+    private String referralCode;
 
     public UserProfileDTO(User user) {
         this.id = user.getId();
@@ -43,6 +45,8 @@ public class UserProfileDTO {
         this.addresses = user.getAddresses().stream().map(AddressDTO::new).toList();
         this.billingDetails = user.getBillingDetails().stream().map(BillingDTO::new).toList();
         this.avatar = user.getAvatar();
+        this.rewardPoints = user.getRewardPoints();
+        this.referralCode =user.getReferralCode();
     }
 
 }

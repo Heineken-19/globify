@@ -46,6 +46,11 @@ public class AdminService {
     public void updateUserRole(Long userId, Role newRole) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (newRole == null) {
+            throw new IllegalArgumentException("Invalid role");
+        }
+
         user.setRole(newRole);
         userRepository.save(user);
     }
@@ -72,25 +77,22 @@ public class AdminService {
         return new ShippingOptionDTO(savedRate.getId(), savedRate.getMethod(), savedRate.getPrice());
     }
 
-    // ✅ 3️⃣ Szállítási díj módosítása
-    // ✅ 3️⃣ Szállítási díj módosítása
     @Transactional
-    public ShippingOptionDTO updateShippingRate(ShippingMethod method, BigDecimal price) {
-        ShippingRate rate = shippingRateRepository.findByMethod(method)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid shipping method"));
+    public ShippingOptionDTO updateShippingRateById(Long id, BigDecimal price) {
+        ShippingRate rate = shippingRateRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid shipping rate ID"));
 
         rate.setPrice(price);
-        ShippingRate updatedRate = shippingRateRepository.save(rate);
-
-        return new ShippingOptionDTO(updatedRate.getId(), updatedRate.getMethod(), updatedRate.getPrice());
+        ShippingRate updated = shippingRateRepository.save(rate);
+        return new ShippingOptionDTO(updated.getId(), updated.getMethod(), updated.getPrice());
     }
 
     // ✅ 4️⃣ Szállítási díj törlése
     @Transactional
-    public void deleteShippingRate(ShippingMethod method) {
-        ShippingRate rate = shippingRateRepository.findByMethod(method)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid shipping method"));
-
-        shippingRateRepository.delete(rate);
+    public void deleteShippingRateById(Long id) {
+        if (!shippingRateRepository.existsById(id)) {
+            throw new IllegalArgumentException("Shipping rate not found");
+        }
+        shippingRateRepository.deleteById(id);
     }
 }

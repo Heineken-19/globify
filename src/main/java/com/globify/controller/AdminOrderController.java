@@ -27,20 +27,49 @@ public class AdminOrderController {
         return ResponseEntity.ok(orders);
     }
 
-    @PutMapping("/{id}/status")
-    public ResponseEntity<String> updateOrderStatus(@PathVariable Long id, @RequestBody Map<String, String> request) {
-        String statusValue = request.get("status");
-        OrderStatus status;
+    @PutMapping("/status")
+    public ResponseEntity<String> bulkUpdateOrderStatus(@RequestBody Map<String, Object> request) {
+        List<Long> orderIds = (List<Long>) request.get("orderIds");
+        String statusValue = (String) request.get("status");
 
+        OrderStatus status;
         try {
             status = OrderStatus.valueOf(statusValue);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body("Érvénytelen rendelési státusz: " + statusValue);
         }
 
-        orderService.updateOrderStatus(id, status);
-        return ResponseEntity.ok("Rendelés státusza frissítve: " + status);
+        orderIds.forEach(orderId -> orderService.queueOrderStatusUpdate(orderId, status));
+
+        return ResponseEntity.ok("✅ Rendelések státusza frissítési sorba helyezve: " + status);
     }
 
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<String> updateOrderStatus(@PathVariable Long id, @RequestBody Map<String, String> request) {
+        String statusValue = request.get("status");
+        OrderStatus status = OrderStatus.valueOf(statusValue);
+
+        // Státusz frissítés sorba helyezése (ActiveMQ)
+        orderService.queueOrderStatusUpdate(id, status);
+
+        if (status == OrderStatus.PAID) {
+            orderService.queueOrderInvoice(id); // Számla generálás és küldés sorba
+        }
+
+        return ResponseEntity.ok("✅ Rendelés státusza frissítési és email/számla sorba helyezve: " + status);
+    }
+
+    @PostMapping("/{id}/queue-email")
+    public ResponseEntity<String> queueOrderEmail(@PathVariable Long id) {
+        orderService.queueOrderEmail(id);
+        return ResponseEntity.ok("✅ Email küldési kérés sorba helyezve a rendeléshez: " + id);
+    }
+
+    @PostMapping("/{id}/queue-invoice")
+    public ResponseEntity<String> queueOrderInvoice(@PathVariable Long id) {
+        orderService.queueOrderInvoice(id);
+        return ResponseEntity.ok("✅ Számla generálási kérés sorba helyezve a rendeléshez: " + id);
+    }
 
 }

@@ -10,6 +10,7 @@ import com.globify.repository.CategoryRepository;
 import com.globify.service.FileStorageService;
 import com.globify.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,20 +35,29 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ProductDTO>> getAllProducts(
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) String searchTerm) {
+    public ResponseEntity<Page<ProductDTO>> getAllProducts(
+            @RequestParam(required = false) List<String> category,
+            @RequestParam(required = false) String searchTerm,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(required = false) Boolean isNew,
+            @RequestParam(required = false) Boolean isSale,
+            @RequestParam(required = false) Boolean available,
+            @RequestParam(required = false) List<String> light,
+            @RequestParam(required = false) List<String> water,
+            @RequestParam(required = false) List<String> type,
+            @RequestParam(required = false) Integer minMainSize,
+            @RequestParam(required = false) Integer maxMainSize,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) Boolean isPopular
 
-        Long categoryId = null;
+    ) {
 
-        // Kategória név alapján keresés
-        if (category != null) {
-            categoryId = categoryRepository.findByName(category)
-                    .map(Category::getId)
-                    .orElse(null);
-        }
-
-        List<ProductDTO> products = productService.getAllProducts(categoryId, searchTerm);
+        Page<ProductDTO> products = productService.getAllProducts(
+                category, searchTerm, page, size, isNew, isSale, available,
+                light, water, type, minMainSize, maxMainSize, minPrice, maxPrice, isPopular
+        );
         return ResponseEntity.ok(products);
     }
 
@@ -106,8 +116,6 @@ public class ProductController {
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         Product updatedProduct = objectMapper.readValue(productJson, Product.class);
 
-        // Ha az `available` null, akkor állítsuk be true-ra
-        updatedProduct.setAvailable(Boolean.TRUE.equals(updatedProduct.getAvailable()));
 
         // Termék frissítése a service-ben
         Product updated = productService.updateProduct(id, updatedProduct, files, light, water, extra, fact);
@@ -120,5 +128,23 @@ public class ProductController {
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/new")
+    public ResponseEntity<List<ProductDTO>> getNewProducts() {
+        List<ProductDTO> newProducts = productService.getNewProducts();
+        return ResponseEntity.ok(newProducts);
+    }
+
+    @GetMapping("/sale")
+    public ResponseEntity<List<ProductDTO>> getSaleProducts() {
+        List<ProductDTO> newProducts = productService.getNewProducts();
+        return ResponseEntity.ok(newProducts);
+    }
+
+    @GetMapping("/slug/{slug}")
+    public ResponseEntity<ProductDTO> getProductBySlug(@PathVariable String slug) {
+        ProductDTO product = productService.getProductBySlug(slug);
+        return ResponseEntity.ok(product);
     }
 }

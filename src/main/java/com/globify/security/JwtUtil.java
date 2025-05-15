@@ -13,10 +13,10 @@ import java.util.function.Function;
 @Component
 public class JwtUtil {
 
-    private final String secretKey;
+    private final byte[] signingKey;
 
     public JwtUtil(@Value("${jwt.secret}") String secretKey) {
-        this.secretKey = Base64.getEncoder().encodeToString(secretKey.getBytes());
+        this.signingKey = secretKey.getBytes(StandardCharsets.UTF_8); // 🔧 nem base64-elve!
     }
 
     public String generateToken(String email, String role) {
@@ -25,23 +25,24 @@ public class JwtUtil {
                 .claim("role", role != null ? role : "USER") // Role beillesztése a tokenbe
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24 * 7)) // 1 óra
-                .signWith(SignatureAlgorithm.HS256, secretKey)
+                .signWith(Keys.hmacShaKeyFor(signingKey), SignatureAlgorithm.HS256)
                 .compact();
     }
 
     public String validateToken(String token) {
         try {
             return Jwts.parserBuilder()
-                    .setSigningKey(Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8)))
+                    .setSigningKey(Keys.hmacShaKeyFor(signingKey))
                     .build()
                     .parseClaimsJws(token)
                     .getBody()
                     .getSubject();
         } catch (ExpiredJwtException e) {
-            return null; // Token lejárt
+            System.out.println("❌ Token lejárt: " + e.getMessage());
         } catch (JwtException e) {
-            return null; // Hibás token
+            System.out.println("❌ Hibás token: " + e.getMessage());
         }
+        return null;
     }
 
     public String extractUsername(String token) {
@@ -53,11 +54,26 @@ public class JwtUtil {
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = Jwts.parser()
-                .setSigningKey(secretKey)
+        final Claims claims = Jwts.parserBuilder()
+                .setSigningKey(Keys.hmacShaKeyFor(signingKey))
+                .build()
                 .parseClaimsJws(token)
                 .getBody();
         return claimsResolver.apply(claims);
+    }
+
+    public String extractRole(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(Keys.hmacShaKeyFor(signingKey))
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            return (String) claims.get("role");
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public boolean isTokenValid(String token, String username) {

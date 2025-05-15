@@ -66,4 +66,15 @@ public class User {
 
     @Column(name = "avatar") // ✅ Új avatar mező
     private String avatar;
+
+    @Column(nullable = false, columnDefinition = "int default 0")
+    private int rewardPoints = 0;
+
+    @Column(unique = true)
+    private String referralCode;
+
+    @ManyToOne
+    private User referredBy;
+
+    private LocalDateTime referralRewarded;
 }

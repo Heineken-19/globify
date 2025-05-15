@@ -23,8 +23,11 @@ public class Order {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = true)
     private User user;
+
+    @Column(nullable = true)
+    private String guestEmail; // új mező a vendég e-mailhez
 
     @Column(nullable = false)
     private BigDecimal totalPrice;
@@ -47,7 +50,7 @@ public class Order {
     @OneToOne(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private OrderShipping shipping;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<OrderItem> orderItems;
 
     @PrePersist
@@ -71,4 +74,6 @@ public class Order {
     @Column(nullable = false)
     private BigDecimal finalPrice;
 
+    @Column(nullable = false, columnDefinition = "int default 0")
+    private int usedRewardPoints = 0;
 }

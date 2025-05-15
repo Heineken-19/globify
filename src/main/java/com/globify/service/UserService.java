@@ -1,9 +1,11 @@
 package com.globify.service;
 
 import com.globify.dto.UserProfileDTO;
+import com.globify.entity.EmailVerificationToken;
 import com.globify.entity.User;
 import com.globify.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -56,4 +58,6 @@ public class UserService {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("❌ Felhasználó nem található."));
     }
+
+
 }

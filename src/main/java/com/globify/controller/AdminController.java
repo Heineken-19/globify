@@ -4,12 +4,16 @@ import com.globify.dto.AdminUserDTO;
 import com.globify.entity.Role;
 
 import com.globify.service.AdminService;
+import com.globify.service.AdminStatsService;
+import com.globify.service.ReferralCodeGeneratorService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 
 @RestController
@@ -18,9 +22,13 @@ import java.util.List;
 public class AdminController {
 
     private final AdminService adminService;
+    private final AdminStatsService adminStatsService;
+    private final ReferralCodeGeneratorService referralCodeGeneratorService;
 
-    public AdminController(AdminService adminService) {
+    public AdminController(AdminService adminService, ReferralCodeGeneratorService referralCodeGeneratorService, AdminStatsService adminStatsService) {
         this.adminService = adminService;
+        this.referralCodeGeneratorService = referralCodeGeneratorService;
+        this.adminStatsService = adminStatsService;
     }
 
     // 🔹 1️⃣ Összes felhasználó lekérdezése
@@ -43,5 +51,19 @@ public class AdminController {
         return ResponseEntity.ok("Felhasználói szerepkör módosítva: " + role);
     }
 
+    @PostMapping("/generate-referral-codes")
+    public ResponseEntity<String> generateReferralCodes() {
+        referralCodeGeneratorService.generateReferralCodesForExistingUsers();
+        return ResponseEntity.ok("Referral kódok generálva.");
+    }
 
+    @GetMapping("/newsletter-subscriptions")
+    public ResponseEntity<List<Map<String, Object>>> getDailyNewsletterStats(
+            @RequestParam String startDate,
+            @RequestParam String endDate) {
+
+        LocalDate start = LocalDate.parse(startDate);
+        LocalDate end = LocalDate.parse(endDate);
+        return ResponseEntity.ok(adminStatsService.getDailyNewsletterSubscriptions(start, end));
+    }
 }

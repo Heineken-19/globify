@@ -8,12 +8,13 @@ import useOrder from "../hooks/useOrder";
 import dayjs from "dayjs";
 import OrderModal from "../modal/OrderModal";
 import { useNotification } from "../context/NotificationContext";
+import { formatPrice } from "../utils/formatPrice";
 
 export default function OrderPage() {
   const { fetchUserOrders, orders, loading, error, cancelOrder } = useOrder();
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [modalOpened, setModalOpened] = useState(false);
-  const { showSuccess,  showError } = useNotification();
+  const { showSuccess, showError } = useNotification();
 
   useEffect(() => {
     fetchUserOrders();
@@ -34,9 +35,9 @@ export default function OrderPage() {
       onConfirm: async () => {
         try {
           await cancelOrder(orderId);
-          showSuccess( 'A rendelést sikeresen lemondtad.');
+          showSuccess('A rendelést sikeresen lemondtad.');
         } catch (err) {
-          showError('Nem sikerült lemondani a rendelést.' );
+          showError('Nem sikerült lemondani a rendelést.');
         }
       },
     });
@@ -114,25 +115,20 @@ export default function OrderPage() {
                 <div>
                   <Text fw={400} size="sm" mt="md">
                     Termékek ára: <b>
-                      {new Intl.NumberFormat('hu-HU', {
-                        useGrouping: true,
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0
-                      }).format(order.totalPrice ?? 0)
-                        .replace(/\s/g, '.')} Ft
+                      {formatPrice(order.totalPrice ?? 0)}
                     </b>
                   </Text>
 
                   <Text fw={400} color="orange" size="sm" mt="md">
                     Kedvezmény: <b>
-                      {new Intl.NumberFormat('hu-HU', {
-                        useGrouping: true,
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0
-                      }).format(-Math.abs(order.discountAmount ?? 0)) // 🔹 Mínusz előjel hozzáadása
-                        .replace(/\s/g, '.')} Ft
+                      {formatPrice(-Math.abs(order.discountAmount ?? 0))}
                     </b>
                   </Text>
+                  {(order.usedRewardPoints ?? 0) > 0 && (
+                    <Text fw={400} color="blue" size="sm" mt="md">
+                      Felhasznált pont: <b>{formatPrice(-order.usedRewardPoints!)}</b>
+                    </Text>
+                  )}
                   <Divider my="sm" />
 
                 </div>
@@ -141,13 +137,8 @@ export default function OrderPage() {
             <Group justify="left" >
               <div>
                 <Text fw={400} color="black" size="sm" mt="md">
-                 Szállítási díj: <b>
-                    {new Intl.NumberFormat('hu-HU', {
-                      useGrouping: true,
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0
-                    }).format((order.shippingCost ?? 0))
-                      .replace(/\s/g, '.')} Ft
+                  Szállítási díj: <b>
+                    {formatPrice(order.shippingCost ?? 0)}
                   </b>
                 </Text>
                 <Divider my="sm" />
@@ -156,13 +147,7 @@ export default function OrderPage() {
 
             <Group justify="left" mt="xs" gap="xs">
               <Text fw={700} size="l" mt="sm" >   Fizetendő : <b>
-                {new Intl.NumberFormat('hu-HU', {
-                  useGrouping: true,
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0
-                })
-                  .format(order.finalPrice ?? 0)
-                  .replace(/\s/g, '.')} Ft
+                {formatPrice(order.finalPrice ?? 0)}
               </b></Text>
             </Group>
 

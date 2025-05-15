@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Product, ProductPage } from "../types";
 import {
   getProducts,
   getProductById,
@@ -6,23 +7,37 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  getNewProducts
 } from "../services/ProductService";
-import { Product } from "../types";
+import { ProductFilters } from "./useProductFilters";
 
-export const useProducts = (category?: string, searchTerm?: string) => {
-  const { data: products, isLoading, error } = useQuery<Product[]>({
-    queryKey: ["products", category, searchTerm],
-    queryFn: () => getProducts(category, searchTerm),
+interface UseProductsProps {
+  category?: string;
+  searchTerm?: string;
+  page?: number;
+  size?: number;
+  filters?: ProductFilters;
+  isNew?: boolean;
+  isSale?: boolean;
+  isPopular?: boolean;
+}
+
+export const useProducts = ({
+  category,
+  searchTerm,
+  page = 0,
+  size = 12,
+  filters,
+  isNew,
+  isSale,
+  isPopular,
+}: UseProductsProps) => {
+  return useQuery<ProductPage>({
+    queryKey: ["products", category, searchTerm, page, size, filters, isNew, isSale, isPopular],
+    queryFn: () => getProducts(category, searchTerm, page, size, filters, isNew, isSale, isPopular),
   });
-
-  // 🔹 Kosárhoz adás funkció (helyi state vagy context később)
-  const addToCart = (product: Product) => {
-    console.log("Hozzáadva a kosárhoz:", product);
-    // Itt lehet például a kosár context-be tenni az elemet
-  };
-
-  return { products: products || [], isLoading, error, addToCart };
 };
+
 
 // 🔹 Egy termék lekérdezése
 export const useProduct = (productId: number | null) => {
@@ -77,4 +92,11 @@ export const useDeleteProduct = () => {
     },
   });
 };  
+
+export const useNewProducts = () => {
+  return useQuery<Product[]>({
+    queryKey: ["new-products"],
+    queryFn: getNewProducts,
+  });
+};
 

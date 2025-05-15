@@ -1,7 +1,7 @@
 package com.globify.controller;
 
 import com.globify.dto.ShippingOptionDTO;
-import com.globify.entity.ShippingMethod;
+import com.globify.dto.UpdateShippingRequest;
 import com.globify.entity.ShippingRate;
 import com.globify.repository.ShippingRateRepository;
 import com.globify.service.AdminService;
@@ -52,15 +52,17 @@ public class AdminShippingController {
     }
 
     // ✅ PUT – Szállítási díj módosítása
-    @PutMapping("/{method}")
-    public ShippingOptionDTO updateRate(@PathVariable ShippingMethod method,
-                                        @RequestParam BigDecimal price) {
-        return adminService.updateShippingRate(method, price);
+    @PutMapping("/{id}")
+    public ResponseEntity<ShippingOptionDTO> updateRate(@PathVariable Long id,
+                                                        @RequestBody UpdateShippingRequest request) {
+        ShippingOptionDTO updated = adminService.updateShippingRateById(id, request.getPrice());
+        return ResponseEntity.ok(updated);
     }
 
     // ✅ DELETE – Szállítási díj törlése
-    @DeleteMapping("/{method}")
-    public void deleteRate(@PathVariable ShippingMethod method) {
-        adminService.deleteShippingRate(method);
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteRate(@PathVariable Long id) {
+        adminService.deleteShippingRateById(id);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -1,6 +1,7 @@
 import { createContext, useContext, ReactNode, useState } from "react";
 import { showNotification } from "@mantine/notifications";
 import { IconCheck, IconX, IconInfoCircle } from "@tabler/icons-react";
+import { useMediaQuery } from "@mantine/hooks";
 
 interface NotificationContextType {
   showSuccess: (message: string) => void;
@@ -12,35 +13,41 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const [notificationCount, setNotificationCount] = useState(0);
+  const isMobile = useMediaQuery("(max-width: 768px)");
+
+  const getNotificationStyle = (index: number): React.CSSProperties => ({
+    position: "fixed",
+    top: isMobile ? `${30 + index * 55}px` : `calc(8% + ${index * 70}px)`,
+    left: "50%",
+    right: isMobile ? "auto" : "20px",
+    transform: isMobile ? "translateX(-50%)" : "translateY(-50%)",
+    zIndex: 9999,
+    width: isMobile ? "250px" : "350px",
+    minHeight: isMobile ? "38px" : "50px",
+    padding: isMobile ? "6px 10px" : "10px 16px",
+    borderRadius: "8px",
+    boxSizing: "border-box",
+    overflow: "hidden",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    whiteSpace: "nowrap",
+    fontSize: isMobile ? "12px" : "14px", 
+    fontWeight: 500,
+    animation: "slideDown 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards"
+  });
 
   const showSuccess = (message: string) => {
     const index = notificationCount;
     setNotificationCount((prev) => prev + 1);
 
     showNotification({
-      title: "Siker!",
       message,
       color: "green",
-      icon: <IconCheck size={18} />,
+      icon: <IconCheck size={8} />,
       autoClose: 2000,
       styles: {
-        root: {
-          position: "fixed",
-          top: `calc(8% + ${index * 70}px)`,
-          right: "20px",
-          transform: "translateY(-50%)",
-          zIndex: 9999,
-          width: "320px", // ✅ Fix szélesség
-          minHeight: "60px", // ✅ Magasság kijelentkezéshez is
-          padding: "14px", // ✅ Extra padding
-          borderRadius: "8px",
-          boxSizing: "border-box",
-          overflow: "hidden",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          whiteSpace: "nowrap", // ✅ Szöveg ne törjön meg
-        },
+        root: getNotificationStyle(index),
       },
       onClose: () => setNotificationCount((prev) => prev - 1),
     });
@@ -51,29 +58,12 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     setNotificationCount((prev) => prev + 1);
 
     showNotification({
-      title: "Hiba!",
       message,
       color: "red",
-      icon: <IconX size={18} />,
+      icon: <IconX size={8} />,
       autoClose: 3000,
       styles: {
-        root: {
-          position: "fixed",
-          top: `calc(8% + ${index * 70}px)`,
-          right: "20px",
-          transform: "translateY(-50%)",
-          zIndex: 9999,
-          width: "320px", // ✅ Fix szélesség
-          minHeight: "60px", // ✅ Magasság kijelentkezéshez is
-          padding: "14px", // ✅ Extra padding
-          borderRadius: "8px",
-          boxSizing: "border-box",
-          overflow: "hidden",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          whiteSpace: "nowrap", // ✅ Szöveg ne törjön meg
-        },
+        root: getNotificationStyle(index),
       },
       onClose: () => setNotificationCount((prev) => prev - 1),
     });
@@ -84,33 +74,18 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     setNotificationCount((prev) => prev + 1);
 
     showNotification({
-      title: "Információ",
       message,
       color: "blue",
-      icon: <IconInfoCircle size={18} />,
+      icon: <IconInfoCircle size={8} />,
       autoClose: 3000,
       styles: {
-        root: {
-          position: "fixed",
-          top: `calc(8% + ${index * 70}px)`,
-          right: "20px",
-          transform: "translateY(-50%)",
-          zIndex: 9999,
-          width: "320px", // ✅ Fix szélesség
-          minHeight: "60px", // ✅ Magasság kijelentkezéshez is
-          padding: "14px", // ✅ Extra padding
-          borderRadius: "8px",
-          boxSizing: "border-box",
-          overflow: "hidden",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          whiteSpace: "nowrap", // ✅ Szöveg ne törjön meg
-        },
+        root: getNotificationStyle(index),
       },
       onClose: () => setNotificationCount((prev) => prev - 1),
     });
   };
+
+  
 
   return (
     <NotificationContext.Provider value={{ showSuccess, showError, showInfo }}>
@@ -126,3 +101,4 @@ export const useNotification = () => {
   }
   return context;
 };
+

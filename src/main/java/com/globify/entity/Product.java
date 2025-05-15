@@ -1,9 +1,11 @@
 package com.globify.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -13,7 +15,6 @@ import java.util.stream.Collectors;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Product {
 
     @Id
@@ -24,8 +25,9 @@ public class Product {
     private String name;
 
     private String title;
+    @Column(columnDefinition = "TEXT")
     private String description;
-    private String size;  // NULLABLE
+    private String size;
     private String type;  // NULLABLE
 
     @Column(nullable = false)
@@ -40,7 +42,7 @@ public class Product {
     private Category category;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<ProductImage> images;
+    private List<ProductImage> images = new ArrayList<>();
 
     @Column(nullable = false, columnDefinition = "BIT DEFAULT 1")
     private Boolean available;
@@ -48,5 +50,19 @@ public class Product {
     @OneToOne(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private ProductDetails productDetails;
 
+    @Column(name = "is_new")
+    private Boolean isNew;
+
+    @Column(name = "is_sale")
+    private Boolean isSale;
+
+    @Column(name = "discount_percentage")
+    private BigDecimal discountPercentage;
+
+    @Column(name = "main_size")
+    private Double mainSize;
+
+    @Column(unique = true)
+    private String slug;
 
 }

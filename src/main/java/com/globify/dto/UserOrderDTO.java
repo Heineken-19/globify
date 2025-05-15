@@ -27,6 +27,7 @@ public class UserOrderDTO {
     private BigDecimal finalPrice;
     private BigDecimal shippingCost;
     private BigDecimal discountAmount;
+    private int usedRewardPoints;
     private String status;
     private LocalDateTime createdAt;
 
@@ -54,6 +55,8 @@ public class UserOrderDTO {
 
         // ✅ PaymentMethod kitöltése
         this.paymentMethod = order.getPaymentMethod();
+
+        this.usedRewardPoints = order.getUsedRewardPoints();
 
         // ✅ Shipping adatok kitöltése
         OrderShipping shipping = order.getShipping();

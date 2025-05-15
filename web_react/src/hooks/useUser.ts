@@ -37,5 +37,6 @@ export const useUser = () => {
     }
   };
 
-  return { user, loading, error, updateUser };
+  return { user, setUser, loading, error, updateUser, firstName: user?.firstName ?? "",
+    lastName: user?.lastName ?? ""};
 };

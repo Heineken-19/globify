@@ -1,5 +1,6 @@
 package com.globify.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,24 +14,29 @@ import java.util.UUID;
 @Service
 public class FileStorageService {
 
-    private static final String UPLOAD_DIR = "uploads/";
+    @Value("${product.upload-dir}")
+    private String productUploadDir;
 
     public String saveFile(MultipartFile file) throws IOException {
-        // Ellenőrizzük, hogy létezik-e az uploads mappa
-        File uploadDir = new File(UPLOAD_DIR);
-        if (!uploadDir.exists()) {
-            uploadDir.mkdirs();
+        Path rootPath = Paths.get("").toAbsolutePath();
+        Path uploadPath = rootPath.resolve(productUploadDir); // Ez lesz pl. uploads/products
+
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
         }
 
-        // Generálunk egy egyedi fájlnevet
-        String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-        Path filePath = Paths.get(UPLOAD_DIR + fileName);
+        String originalName = file.getOriginalFilename();
+        String cleanedName = originalName.replaceAll("[^a-zA-Z0-9._-]", "_");
+        String fileName = UUID.randomUUID().toString() + "_" + cleanedName;
 
-        // Fájl mentése
+        Path filePath = uploadPath.resolve(fileName);
         Files.write(filePath, file.getBytes());
 
-        return fileName; // Ezt az adatbázisba mentjük
+        System.out.println("✅ Mentés teljes útvonala: " + filePath.toAbsolutePath());
+
+        return fileName;
     }
+
 
     public String saveFileFromPath(String filePath) throws IOException {
         File file = new File(filePath);
@@ -38,30 +44,31 @@ public class FileStorageService {
             throw new IOException("A fájl nem található: " + filePath);
         }
 
-        // Ellenőrizzük, hogy létezik-e az uploads mappa
-        File uploadDir = new File(UPLOAD_DIR);
-        if (!uploadDir.exists()) {
-            uploadDir.mkdirs();
+        Path rootPath = Paths.get("").toAbsolutePath();
+        Path uploadPath = rootPath.resolve(productUploadDir);
+
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
         }
 
-        // Generálunk egy egyedi fájlnevet
         String fileName = UUID.randomUUID().toString() + "_" + file.getName();
-        Path destinationPath = Paths.get(UPLOAD_DIR + fileName);
+        Path destinationPath = uploadPath.resolve(fileName);
 
-        // Másolás az új helyre
         Files.copy(file.toPath(), destinationPath);
 
-        return fileName; // Az új fájl neve az adatbázishoz
+        return fileName;
     }
 
     public byte[] loadFile(String fileName) throws IOException {
-        Path filePath = Paths.get(UPLOAD_DIR + fileName);
+        Path rootPath = Paths.get("").toAbsolutePath();
+        Path filePath = rootPath.resolve(productUploadDir).resolve(fileName);
         return Files.readAllBytes(filePath);
     }
 
     public boolean deleteFile(String fileName) {
-        Path filePath = Paths.get(UPLOAD_DIR + fileName);
         try {
+            Path rootPath = Paths.get("").toAbsolutePath();
+            Path filePath = rootPath.resolve(productUploadDir).resolve(fileName);
             return Files.deleteIfExists(filePath);
         } catch (IOException e) {
             return false;

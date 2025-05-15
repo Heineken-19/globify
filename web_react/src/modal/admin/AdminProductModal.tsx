@@ -1,12 +1,17 @@
 import { useState, useEffect } from "react";
-import { Modal, TextInput, Textarea, NumberInput, Button, FileInput, Select, Switch } from "@mantine/core";
+import { Modal, TextInput, Textarea, NumberInput, Button, FileInput, Select, Switch, SimpleGrid } from "@mantine/core";
 import type { AdminProduct } from "../../types";
-import { useCreateProduct, useUpdateProduct, useCategories} from "../../hooks/admin/useAdminProduct";
+import { useCreateProduct, useUpdateProduct, useCategories } from "../../hooks/admin/useAdminProduct";
 import { AdminProductModalProps } from "../../types";
+import { useMediaQuery } from '@mantine/hooks';
+import { useModal } from "../../context/ModalContext";
 
 const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps) => {
   const isEditing = !!product;
-
+  const [light, setLight] = useState("");
+  const [water, setWater] = useState("");
+  const [extra, setExtra] = useState("");
+  const [fact, setFact] = useState("");
   const { data: categories, isLoading } = useCategories();
   const { mutateAsync: createProduct } = useCreateProduct();
   const { mutateAsync: updateProduct } = useUpdateProduct();
@@ -14,8 +19,11 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [originalData, setOriginalData] = useState<Partial<AdminProduct>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { setModalOpen } = useModal();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
-  const [formData, setFormData] = useState<Partial<AdminProduct>>({
+
+  const [formData, setFormData] = useState<Partial<AdminProduct & { category: { id: number; name?: string }, mainSize?: number }>>({
     id: undefined, // 🔹 Az id most már mindig benne van
     name: "",
     title: "",
@@ -25,14 +33,40 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
     price: 0,
     stock: 0,
     available: true,
+    isNew: true,
+    isSale: true,
+    mainSize: undefined,
     category: { id: 0 },
   });
 
+  useEffect(() => {
+    setModalOpen(opened); // amikor nyitva van, állítsd be
+  }, [opened]);
 
   useEffect(() => {
-    if (product) {
-      setFormData({ ...product, category: product.category || { id: 0 }, }); // 🔹 Termék adatok betöltése szerkesztéskor
-      setOriginalData({ ...product }); // 🔹 Mentjük az eredeti adatokat
+    if (product && categories) {
+      let selectedCategory;
+
+      // TS szerint a category típusa nem string, de valójában lehet – trükközünk:
+      if (typeof (product.category as any) === "string") {
+        selectedCategory = categories.find((cat) => cat.name === product.category);
+      } else {
+        selectedCategory = categories.find((cat) => cat.id === (product.category as any)?.id);
+      }
+
+      setFormData({
+        ...product,
+        category: selectedCategory
+          ? { id: selectedCategory.id, name: selectedCategory.name }
+          : { id: 0 },
+      });
+
+      setLight(product.light || "");
+      setWater(product.water || "");
+      setExtra(product.extra || "");
+      setFact(product.fact || "");
+
+      setOriginalData({ ...product });
     } else {
       resetForm();
     }
@@ -48,12 +82,19 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
       description: "",
       price: 0,
       stock: 0,
+      mainSize: undefined,
       category: { id: 0 },
       available: true,
+      isNew: true,
+      isSale: true,
     });
     setSelectedFiles([]);
     setOriginalData({});
     setErrors({});
+    setLight("");   
+    setWater("");
+    setExtra("");
+    setFact("");
   };
 
 
@@ -74,13 +115,17 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
       if (!("available" in updatedFields)) {
         updatedFields["available"] = formData.available ?? true;
       }
+
+      if (!("isSale" in updatedFields)) {
+        updatedFields["isSale"] = formData.isSale ?? true;
+      }
     }
 
     return updatedFields;
   };
 
 
-  
+
 
   // ✅ Hibakezelés frissítése komponensekhez
   const handleValidationError = (error: any) => {
@@ -113,6 +158,10 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
       setErrors({});
       formDataToSend.append("product", JSON.stringify(updatedFields));
       selectedFiles.forEach((file) => formDataToSend.append("files", file));
+      formDataToSend.append("light", light);
+      formDataToSend.append("water", water);
+      formDataToSend.append("extra", extra);
+      formDataToSend.append("fact", fact);
 
       if (isEditing && formData.id !== undefined) {
         await updateProduct({ id: formData.id, product: formDataToSend });
@@ -129,37 +178,64 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
 
 
   return (
-    <Modal opened={opened} onClose={onClose} title={isEditing ? "Termék szerkesztése" : "Termék hozzáadása"} centered>
-      <Switch
-        label="Elérhető"
-        checked={formData.available}
-        onChange={(event) => setFormData({ ...formData, available: event.currentTarget.checked })}
-      />
-      <TextInput label="Név" value={formData.name} error={errors.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-      <TextInput label="Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
-      <Textarea label="Leírás" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
-      <NumberInput label="Ár (Ft)" value={formData.price} onChange={(value) => setFormData({ ...formData, price: Number(value) || 0 })} />
-      <NumberInput label="Raktárkészlet" value={formData.stock} onChange={(value) => setFormData({ ...formData, stock: Number(value) || 0 })} />
-      <TextInput label="Méret" value={formData.size} onChange={(e) => setFormData({ ...formData, size: e.target.value })} />
-      <TextInput label="Típus" value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} />
+    <Modal opened={opened} onClose={onClose} title={isEditing ? "Termék szerkesztése" : "Termék hozzáadása"}
+      styles={{
+        content: {
+          position: isMobile ? 'fixed' : 'fixed',
+          bottom: isMobile ? '40px' : '50px',
+          width: isMobile ? "45vh" : "70vh",
+          maxHeight: isMobile ? "80vh" : "auto",
+          overflowY: isMobile ? "auto" : "visible",
+          paddingRight: isMobile ? 3 : undefined,
+        },
+      }}
+    >
+      <SimpleGrid cols={isMobile ? 1 : 2} spacing="md" verticalSpacing="sm">
+        {/* Bal oldal */}
+        <div>
+          <Switch label="Elérhető" checked={formData.available} onChange={(event) => setFormData({ ...formData, available: event.currentTarget.checked })} />
+          <Switch mt={2} label="Új termék" checked={formData.isNew} onChange={(event) => setFormData({ ...formData, isNew: event.currentTarget.checked })} />
+          <Switch mt={2} label="Akciós termék" checked={formData.isSale} onChange={(event) => setFormData({ ...formData, isSale: event.currentTarget.checked })} />
+          <TextInput label="Név" value={formData.name} error={errors.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+          <TextInput label="Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
+          <Textarea label="Leírás" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+          <NumberInput label="Ár (Ft)" value={formData.price} onChange={(value) => setFormData({ ...formData, price: Number(value) || 0 })} />
+          <NumberInput label="Raktárkészlet" value={formData.stock} onChange={(value) => setFormData({ ...formData, stock: Number(value) || 0 })} />
+          <FileInput
+            multiple
+            label="Termék képek"
+            placeholder="Képek feltöltése"
+            onChange={(files) => setSelectedFiles(files as File[])}
+          />
+        </div>
 
-      <Select
-        label="Kategória"
-        placeholder={isLoading ? "Betöltés..." : "Válassz kategóriát"}
-        data={categories?.map((cat) => ({ value: cat.id.toString(), label: cat.name })) || []}
-        value={formData.category?.id ? formData.category.id.toString() : undefined}
-        error={errors.category}
-        onChange={(value) => setFormData({ ...formData, category: { id: Number(value) } })}
-      />
+        {/* Jobb oldal */}
+        <div>
+          <TextInput label="Paraméterek" value={formData.size} onChange={(e) => setFormData({ ...formData, size: e.target.value })} />
+          <NumberInput label="Szűrési méret (mainSize)" value={formData.mainSize} onChange={(value) => setFormData({ ...formData, mainSize: typeof value === "number" ? value : undefined })} />
+          <TextInput label="Típus" value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} />
+          <Select
+            label="Kategória"
+            placeholder={isLoading ? "Betöltés..." : "Válassz kategóriát"}
+            data={categories?.map((cat) => ({ value: String(cat.id), label: cat.name })) || []}
+            value={formData.category?.id !== undefined ? String(formData.category.id) : undefined}
+            error={errors.category}
+            onChange={(value) => {
+              const selectedId = Number(value);
+              const selectedCategory = categories?.find((cat) => cat.id === selectedId);
+              setFormData({ ...formData, category: { id: selectedId, name: selectedCategory?.name || "" } });
+            }}
+          />
+          <TextInput label="Fényigény" value={light} onChange={(e) => setLight(e.currentTarget.value)} />
+          <TextInput label="Vízigény" value={water} onChange={(e) => setWater(e.currentTarget.value)} />
+          <TextInput label="Extra infó" value={extra} onChange={(e) => setExtra(e.currentTarget.value)} />
+          <TextInput label="Érdekesség" value={fact} onChange={(e) => setFact(e.currentTarget.value)} />
+        </div>
+      </SimpleGrid>
 
 
 
-      <FileInput
-        multiple
-        label="Termék képek"
-        placeholder="Képek feltöltése"
-        onChange={(files) => setSelectedFiles(files as File[])}
-      />
+
       {errors.general && <div style={{ color: "red", marginTop: "10px" }}>{errors.general}</div>}
       <Button onClick={handleSubmit} fullWidth mt="md">
         {isEditing ? "Frissítés" : "Hozzáadás"}

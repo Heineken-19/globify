@@ -1,22 +1,31 @@
 import { useState, useEffect } from "react";
 import OrderService from "../services/OrderService";
-import { OrderData, OrderRequestDTO } from "../types";
+import { OrderData, OrderRequestDTO, GuestOrderRequestDTO } from "../types";
+import { useAuth } from "./useAuth";
 
 const useOrder = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [orders, setOrders] = useState<OrderData[]>([]);
+  const { isGuest, guestEmail } = useAuth();
 
-  const createOrder = async (orderData: OrderRequestDTO) => {
+  const createOrder = async (orderData: OrderRequestDTO | GuestOrderRequestDTO) => {
     if (!orderData.items || orderData.items.length === 0) {
       console.error("HIBA: A rendelési adatok 'items' mezője üres vagy nincs meghatározva!");
       return;
     }
+
     setLoading(true);
     try {
-      const response = await OrderService.createOrder(orderData);
-      console.log("Rendelési válasz:", response);
+      let response;
 
+      if (isGuest) {
+        if (!guestEmail) throw new Error("Vendég email nem elérhető!");
+        response = await OrderService.createGuestOrder({ ...orderData, email: guestEmail });
+      } else {
+        response = await OrderService.createOrder(orderData);
+      }
+  
       const orderId = response.id;
       if (!orderId) {
         console.error("HIBA: A rendelési azonosító nem található a válaszban!");
@@ -24,7 +33,6 @@ const useOrder = () => {
       }
       
       console.log("Rendelés sikeresen létrehozva, orderId:", orderId);
-      
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);

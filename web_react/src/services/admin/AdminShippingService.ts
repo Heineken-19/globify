@@ -16,7 +16,9 @@ const AdminShippingService = {
 
   // 🔹 Szállítási mód frissítése
   updateShippingOption: async (id: number, shippingOption: ShippingOptionInput): Promise<ShippingOption> => {
-    const response = await api.put<ShippingOption>(`/api/admin/shipping/${id}`, shippingOption);
+    const response = await api.put<ShippingOption>(`/api/admin/shipping/${id}`, {
+      price: shippingOption.price,
+    });
     return response.data;
   },
 

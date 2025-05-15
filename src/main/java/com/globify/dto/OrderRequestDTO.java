@@ -26,4 +26,5 @@ public class OrderRequestDTO {
     private String discountName;
     private BillingDTO billingData;
     private List<OrderItemDTO> items;
+    private int usedRewardPoints;
 }

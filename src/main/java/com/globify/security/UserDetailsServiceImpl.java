@@ -24,19 +24,12 @@ UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        Optional<User> user = userRepository.findByEmail(email);
-        if (user.isEmpty()) {
-            throw new UsernameNotFoundException("User not found: " + email);
-        }
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
 
-        GrantedAuthority authority = new SimpleGrantedAuthority(
-                "ROLE_" + (user.get().getRole() != null ? user.get().getRole().name() : "USER")
-        );
+        GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + (user.getRole() != null ? user.getRole().name() : "USER"));
 
-        return new org.springframework.security.core.userdetails.User(
-                user.get().getEmail(),  // Felhasználónév (email)
-                user.get().getPassword(),  // Kódolt jelszó
-                Collections.singletonList(authority) // Jogosultságok listája
-        );
+        return new CustomUserDetails(user, Collections.singletonList(authority));
     }
+
 }

@@ -3,8 +3,8 @@ import { AdminProduct } from "../../types";
 
 class AdminProductService {
   // 🔹 Összes termék lekérdezése
-  static async getAllProducts(): Promise<AdminProduct[]> {
-    const response = await api.get("/api/products");
+  static async getAllProducts(page: number = 0, size: number = 12): Promise<{ content: AdminProduct[], totalPages: number }> {
+    const response = await api.get(`/api/products?page=${page}&size=${size}`);
     return response.data;
   }
 

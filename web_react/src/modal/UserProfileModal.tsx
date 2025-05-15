@@ -1,4 +1,4 @@
-import { Modal, TextInput, Button, Group, Select, Text, Paper } from '@mantine/core';
+import { Modal, TextInput, Button, Group, Text, Paper } from '@mantine/core';
 import { useState, useEffect } from 'react';
 import { useUser } from '../hooks/useUser';
 import { DatePickerInput } from '@mantine/dates';
@@ -6,6 +6,7 @@ import { useFavoritePickup,  FoxPostPoint } from "../hooks/useFavoritePickup";
 import { useNotification } from '../context/NotificationContext';
 import dayjs from 'dayjs';
 import FoxPostSelectorSmall from '../selector/FoxPostSelectorSmall';
+import { useModal } from "../context/ModalContext";
 
 
 interface FormData {
@@ -34,9 +35,14 @@ interface UserProfileModalProps {
 const UserProfileModal = ({ opened, onClose, type, data, onSave }: UserProfileModalProps) => {
     const { user, updateUser } = useUser();
     const [formData, setFormData] = useState<FormData>(data || {});
-    const { favoritePoint, saveFavorite } = useFavoritePickup();
+    const { favoritePoint, saveFavorite, refetchFavoritePickupPoint } = useFavoritePickup();
     const [showPickupModal, setShowPickupModal] = useState(false);
     const { showSuccess, showError } = useNotification();
+    const { setModalOpen } = useModal();
+
+    useEffect(() => {
+        setModalOpen(opened); // amikor nyitva van, állítsd be
+      }, [opened]);
 
     useEffect(() => {
         if (type === "pickupPoint" && favoritePoint?.name) {
@@ -57,17 +63,22 @@ const UserProfileModal = ({ opened, onClose, type, data, onSave }: UserProfileMo
         setFormData((prev: FormData) => ({ ...prev, [field]: value }));
     };
     const handleSave = async () => {
+        try {
         if (type === 'profile') {
             await updateUser(formData);
             showSuccess('Profiladatok sikeresen mentve!');
         }
         onSave(formData);
         onClose();
+    } catch (error) {
+        showError('Hiba történt az adatok mentése során.');
+    }
     };
 
     const handlePickupPointChange = async (point: FoxPostPoint) => {
         try {
-            await saveFavorite(point); // ✅ Sikeres mentés
+            await saveFavorite(point);
+            await refetchFavoritePickupPoint(); // ✅ Sikeres mentés
             setFormData((prev) => ({
                 ...prev,
                 pickupPoint: point.name,

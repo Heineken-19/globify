@@ -72,6 +72,17 @@ export const useCoupon = () => {
     
   };
 
+  const generateRewardCoupon = async (discountPercentage: number): Promise<Coupon | null> => {
+    try {
+      const coupon = await CouponService.generateRewardCoupon(discountPercentage);
+      setCoupons((prev) => [...prev, coupon]); // hozzáadjuk a friss kuponhoz a listához
+      return coupon;
+    } catch (err) {
+      setError('❌ Hiba történt a kupon generálásakor.');
+      return null;
+    }
+  };
+
   return {
     coupons,
     loading,
@@ -80,5 +91,6 @@ export const useCoupon = () => {
     applyCoupon,
     calculateDiscountedTotal,
     clearCoupon,
+    generateRewardCoupon,
   };
 };

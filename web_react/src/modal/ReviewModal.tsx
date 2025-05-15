@@ -3,12 +3,14 @@ import { Modal, Text, Button, ScrollArea, Textarea, Group, Rating, Divider } fro
 import { useReviews } from '../hooks/useReview';
 import { useNotification } from '../context/NotificationContext';
 
+
 interface Props {
   productId: number;
   onClose: () => void;
+  productName: string;
 }
 
-const ReviewModal = ({ productId, onClose }: Props) => {
+const ReviewModal = ({ productId, onClose, productName }: Props) => {
   const { reviews, averageRating, addReview } = useReviews(productId);
   const [rating, setRating] = useState<number | undefined>(undefined);
   const [comment, setComment] = useState<string>('');
@@ -37,7 +39,7 @@ const ReviewModal = ({ productId, onClose }: Props) => {
     <Modal
       opened={true}
       onClose={onClose}
-      title="Vélemények"
+      title={`${productName}`}
       size="md"
       centered
       overlayProps={{

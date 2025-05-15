@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class SubscriberService {
@@ -19,9 +20,13 @@ public class SubscriberService {
         this.subscriberRepository = subscriberRepository;
     }
 
-    /**
-     * Feliratkozás hírlevélre
-     */
+    public void ensureUnsubscribeToken(Subscriber subscriber) {
+        if (subscriber.getUnsubscribeToken() == null) {
+            subscriber.setUnsubscribeToken(UUID.randomUUID().toString());
+            subscriberRepository.save(subscriber);
+        }
+    }
+
     public String subscribe(String email) {
         Optional<Subscriber> existingSubscriber = subscriberRepository.findByEmail(email);
 
@@ -46,15 +51,21 @@ public class SubscriberService {
     /**
      * Leiratkozás hírlevélről
      */
-    public String unsubscribe(String email) {
-        Optional<Subscriber> subscriber = subscriberRepository.findByEmail(email);
-        if (subscriber.isPresent()) {
-            subscriber.get().setSubscribed(false);
-            subscriberRepository.save(subscriber.get());
-            logger.info("❌ Leiratkozás: {}", email);
-            return "Sikeresen leiratkoztál a hírlevélről!";
+    public boolean unsubscribeByToken(String token) {
+        Optional<Subscriber> subscriberOpt = subscriberRepository.findAll().stream()
+                .filter(s -> token.equals(s.getUnsubscribeToken()))
+                .findFirst();
+
+        if (subscriberOpt.isPresent()) {
+            Subscriber subscriber = subscriberOpt.get();
+            subscriber.setSubscribed(false);
+            subscriber.setUnsubscribeToken(null); // opcionálisan törölheted is a tokent
+            subscriberRepository.save(subscriber);
+            logger.info("❌ Leiratkozás token alapján: {}", subscriber.getEmail());
+            return true;
         }
-        return "Nem található feliratkozás ezzel az email címmel.";
+
+        return false;
     }
 
     /**
@@ -65,5 +76,21 @@ public class SubscriberService {
                 .filter(Subscriber::isSubscribed)
                 .map(Subscriber::getEmail)
                 .toList();
+    }
+
+    public Subscriber findByEmail(String email) {
+        return subscriberRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Nincs ilyen feliratkozó: " + email));
+    }
+
+    public boolean unsubscribeByEmail(String email) {
+        Optional<Subscriber> subscriberOpt = subscriberRepository.findByEmail(email);
+        if (subscriberOpt.isPresent()) {
+            Subscriber subscriber = subscriberOpt.get();
+            subscriber.setSubscribed(false);
+            subscriberRepository.save(subscriber);
+            return true;
+        }
+        return false;
     }
 }

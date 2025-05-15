@@ -31,5 +31,12 @@ export const CouponService = {
   // Kupon törlése
   deleteCoupon: async (id: number) => {
     await api.delete(`/api/coupons/${id}`);
+  },
+
+  generateRewardCoupon: async (discountPercentage: number) => {
+    const response = await api.post(`/api/coupons/reward`, null, {
+      params: { discountPercentage }
+    });
+    return response.data;
   }
 };

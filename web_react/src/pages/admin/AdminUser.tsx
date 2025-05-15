@@ -1,4 +1,5 @@
-import { Select, Table, Button, Container } from '@mantine/core';
+import { Select, Table, Button, Container, Paper, Text, Stack, Group, } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { useAdminUsers } from '../../hooks/admin/useAdminUsers';
 import AdminBar from './AdminBar';
 
@@ -6,10 +7,42 @@ const roles = ['USER', 'ADMIN'];
 
 const AdminUser = () => {
   const { users, changeUserRole, removeUser } = useAdminUsers();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   return (
     <Container size="xl" style={{ paddingTop: '20px', paddingBottom: '20px' }}>
       <AdminBar />
+
+      {isMobile ? (
+        <Stack gap="md">
+          {users.map((user) => (
+            <Paper key={user.id} shadow="xs" p="md" withBorder>
+              <Text size="sm" fw={500}>
+                {user.firstName} {user.lastName}
+              </Text>
+              <Text size="sm">{user.email}</Text>
+              <Text size="sm">Tel.: {user.phone || 'N/A'}</Text>
+              <Text size="sm">Regisztráció: {new Date(user.createdAt).toLocaleString()}</Text>
+              <Text size="sm">Utolsó belépés: {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'N/A'}</Text>
+              <Group mt="xs">
+                <Select
+                  value={user.role}
+                  onChange={(value) => value && changeUserRole(user.id, value)}
+                  data={roles}
+                  size="xs"
+                />
+                <Button
+                  color="red"
+                  size="xs"
+                  onClick={() => removeUser(user.id)}
+                >
+                  Törlés
+                </Button>
+              </Group>
+            </Paper>
+          ))}
+        </Stack>
+      ) : (
       <Table>
         <thead>
           <tr>
@@ -53,6 +86,7 @@ const AdminUser = () => {
           ))}
         </tbody>
       </Table>
+      )}
     </Container>
   );
 };

@@ -1,7 +1,14 @@
 import { Box, Container, Text, Group, rem, Anchor, Divider, SimpleGrid, Button, Input } from '@mantine/core';
 import { IconBrandFacebook, IconBrandInstagram, IconBrandTwitter } from '@tabler/icons-react';
+import { useState } from "react";
+import { useSubscribeToNewsletter } from "../hooks/useNewsLetter";
+import { useNavigate } from 'react-router-dom';
 
 const Footer = () => {
+  const [email, setEmail] = useState("");
+  const subscribeMutation = useSubscribeToNewsletter();
+  const navigate = useNavigate();
+
   return (
     <Box
       component="footer"
@@ -9,7 +16,7 @@ const Footer = () => {
         backgroundColor: '#f8f8f8',
         padding: `${rem(40)} 0`,
         borderTop: '1px solid #e0e0e0',
-        marginTop: rem(60),
+        marginTop: 'auto',
       }}
     >
       <Container size="xl">
@@ -28,19 +35,22 @@ const Footer = () => {
           </Box>
 
           {/* Termékkategóriák */}
+          
           <Box>
             <Text fw={700} size="md" mb="sm">
               Termékeink
             </Text>
-            <Anchor href="/products/new" size="sm" color="dimmed">
-              Új termékek
+            <Group gap="md">
+            <Anchor onClick={() => navigate('/products?category=new')} size="sm" color="dimmed">
+              Újdonságaink
             </Anchor>
-            <Anchor href="/products/sale" size="sm" color="dimmed">
+            <Anchor onClick={() => navigate('/products?category=sale')} size="sm" color="dimmed">
               Akciók
             </Anchor>
-            <Anchor href="/products/popular" size="sm" color="dimmed">
+            <Anchor onClick={() => navigate('/products?category=Népszerű%20termékek')} size="sm" color="dimmed">
               Népszerű termékek
             </Anchor>
+            </Group>
           </Box>
 
           {/* Ügyfélszolgálat */}
@@ -48,15 +58,17 @@ const Footer = () => {
             <Text fw={700} size="md" mb="sm">
               Ügyfélszolgálat
             </Text>
-            <Anchor href="/support/contact" size="sm" color="dimmed">
+            <Group gap="md">
+            <Anchor onClick={() => navigate('/support/contact')} size="sm" color="dimmed">
               Kapcsolat
             </Anchor>
-            <Anchor href="/support/faq" size="sm" color="dimmed">
+            <Anchor onClick={() => navigate('/support/faq')} size="sm" color="dimmed">
               GYIK
             </Anchor>
-            <Anchor href="/support/return-policy" size="sm" color="dimmed">
+            <Anchor onClick={() => navigate('/support/return-policy')} size="sm" color="dimmed">
               Visszaküldési feltételek
             </Anchor>
+            </Group>
           </Box>
 
           {/* Hírlevél feliratkozás */}
@@ -65,8 +77,8 @@ const Footer = () => {
               Iratkozz fel hírlevelünkre
             </Text>
             <Group>
-              <Input placeholder="Email cím" type="email" size="sm" style={{ flexGrow: 1 }} />
-              <Button size="sm" color="green">
+              <Input placeholder="Email cím" type="email" size="sm"  value={email}  onChange={(e) => setEmail(e.currentTarget.value)}  style={{ flexGrow: 1 }}  />
+              <Button size="sm" color="green" onClick={() => {if (email) subscribeMutation.mutate(email);}}>
                 Feliratkozás
               </Button>
             </Group>

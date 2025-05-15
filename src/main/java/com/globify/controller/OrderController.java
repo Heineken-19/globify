@@ -1,9 +1,6 @@
 package com.globify.controller;
 
-import com.globify.dto.OrderDTO;
-import com.globify.dto.OrderRequestDTO;
-import com.globify.dto.OrderResponseDTO;
-import com.globify.dto.UserOrderDTO;
+import com.globify.dto.*;
 import com.globify.entity.Order;
 import com.globify.entity.User;
 import com.globify.service.OrderService;
@@ -88,5 +85,14 @@ public class OrderController {
         User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
         orderService.cancelOrder(id, user);
         return ResponseEntity.ok("Rendelés törölve!");
+    }
+
+    @PostMapping("/guest-orders")
+    public ResponseEntity<?> placeGuestOrder(@RequestBody GuestOrderRequestDTO request) {
+        Order order = orderService.placeGuestOrder(request);
+        return ResponseEntity.ok(Map.of(
+                "orderId", order.getId(),
+                "email", order.getGuestEmail()
+        ));
     }
 }

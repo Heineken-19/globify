@@ -39,10 +39,8 @@ const AdminService = {
     }
   },
 
-  async getRevenueStats(period: "weekly" | "monthly") {
-    const response = await api.get(`/api/admin/stats/revenue`, {
-      params: { period },
-    });
+  async getWeeklyRevenueLast5() {
+    const response = await api.get("/api/admin/stats/weekly-revenue-last-5");
     return response.data;
   },
 
@@ -52,6 +50,15 @@ const AdminService = {
     });
     return response.data;
   },
+
+  async getMonthlyRevenueLast5() {
+    const response = await api.get("/api/admin/stats/monthly-revenue-last-5");
+    return response.data;
+  },
+  
 };
+
+
+
 
 export default AdminService;

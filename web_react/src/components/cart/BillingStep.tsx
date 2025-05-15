@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Paper, Text, Divider, Select, TextInput, Button, Group } from '@mantine/core';
 import { useBilling } from '../../hooks/useBilling';
-import type { Billing } from '../../services/BillingService';
 
 interface Props {
   selectedBilling: string | null;

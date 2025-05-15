@@ -7,7 +7,7 @@ export type Product = {
   price: number;
   available: boolean;
   stock: number;
-  category?: { id: number };
+  category: string | null;
   imageUrls: string[];
   type: string;
   title: string;
@@ -17,7 +17,19 @@ export type Product = {
   light?: string;
   extra?: string;
   fact?: string;
+  isNew?: boolean;
+  isSale?: boolean;
+  discountPercentage?: number;
+  slug: string;
 };
+
+export interface ProductPage {
+  content: Product[];
+  totalPages: number;
+  totalElements: number;
+  number: number; 
+  size: number;   
+}
 
 export type ProductDetails = {
   light?: string;
@@ -38,8 +50,17 @@ export interface AdminProduct {
   size: string;
   type: string;
   imageUrls: string[];
-  category?: { id: number };
+  category: { id: number; name?: string } | string;
   createdAt: string;
+  isNew: boolean;
+  isSale: boolean;
+  discountPercentage?: number | null;
+
+  // 🔽 Új mezők
+  light?: string;
+  water?: string;
+  extra?: string;
+  fact?: string;
 }
 
   export interface UserProfile {
@@ -53,6 +74,10 @@ export interface AdminProduct {
     email: string;
     role: string;
     avatar?: string;
+    token?: string;
+    rewardPoints?: number;
+    referralCode?: string;
+
   }
 
   export interface FavoriteItem {
@@ -199,6 +224,24 @@ export interface OrderResponseDTO {
   status: string;
 }
 
+export interface GuestOrderRequestDTO {
+  email: string;
+  items: OrderItemDTO[];
+  paymentMethod: string;
+  shippingMethod: string;
+  shippingPoint: string | null;
+  shippingAddress: string | null;
+  billingData: BillingDTO;
+  totalPrice: number;
+  finalPrice: number;
+  couponCode: string | null;
+  discountAmount: number;
+  discountName: string | null;
+  usedRewardPoints: number;
+  shippingCost: number;
+  status: string;
+}
+
 export type OrderData = {
   id: number;
   totalPrice: number;
@@ -219,12 +262,13 @@ export type OrderData = {
     street: string;
     taxNumber: string;
   }
+  usedRewardPoints?: number;
 };
 
 export interface Order {
   id: number;
   userEmail: string;
-  total: number;
+  finalPrice?: number;
   status: OrderStatus;
   quantity: number;
   createdAt: string;
@@ -257,6 +301,13 @@ export interface AdminUser {
   createdAt: string;
   lastLogin?: string;
   role: 'USER' | 'ADMIN';
+}
+
+export interface Subscriber {
+  id: number;
+  email: string;
+  unsubscribeToken: string;
+  subscribed: boolean;
 }
 
 export interface ShippingOption {

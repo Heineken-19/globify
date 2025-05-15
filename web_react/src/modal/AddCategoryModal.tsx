@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Modal, TextInput, Button, Group, List, Loader, ActionIcon, Text } from "@mantine/core";
 import { IconX, IconCircleCheck } from "@tabler/icons-react";
 import { useCategories, useCreateCategory } from "../hooks/admin/useAdminProduct";
+import { useModal } from "../context/ModalContext";
 
 interface AddCategoryModalProps {
   opened: boolean;
@@ -15,7 +16,12 @@ const AddCategoryModal = ({ opened, onClose }: AddCategoryModalProps) => {
   const [newCategory, setNewCategory] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const { setModalOpen } = useModal();
 
+  useEffect(() => {
+    setModalOpen(opened); // amikor nyitva van, állítsd be
+  }, [opened]);
+  
   useEffect(() => {
     if (opened) {
       setNewCategory("");

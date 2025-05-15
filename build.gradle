@@ -5,7 +5,8 @@ plugins {
 }
 
 group = 'com.globify'
-version = '0.0.1-SNAPSHOT'
+version = '0.0.1'
+sourceCompatibility = '21'
 
 java {
 	toolchain {
@@ -15,6 +16,9 @@ java {
 
 repositories {
 	mavenCentral()
+	flatDir {
+		dirs 'libs'
+	}
 }
 
 dependencies {
@@ -49,6 +53,9 @@ dependencies {
 	implementation 'org.apache.commons:commons-csv:1.9.0'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
+	//MariaDB JDBC Driver (helyesen beállítva)
+	implementation 'org.mariadb.jdbc:mariadb-java-client:3.0.8'
+
 	//MySQL függőségek
 	implementation 'mysql:mysql-connector-java:8.0.33'
 	implementation 'com.mysql:mysql-connector-j:8.2.0'
@@ -61,10 +68,7 @@ dependencies {
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
-	// Teszteléshez szükséges függőségek
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testImplementation 'org.springframework.security:spring-security-test'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	//Email
 	implementation 'org.eclipse.angus:jakarta.mail:2.0.1'
 
 	//Redis függőségek
@@ -72,7 +76,28 @@ dependencies {
 
 	//Apache POI Excel kezelés
 	implementation 'org.apache.poi:poi-ooxml:5.2.3'
+
+	//Tests
+	testImplementation platform('org.junit:junit-bom:5.11.0')
+	testImplementation 'org.junit.jupiter:junit-jupiter'
+	testImplementation 'org.mockito:mockito-core:5.11.0'
+	testImplementation 'org.mockito:mockito-junit-jupiter:5.11.0'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+
+    //invoice generálás
+	implementation name: 'openhtmltopdf-pdfbox-1.0.10'
+	implementation name: 'openhtmltopdf-core-1.0.10'
+	implementation name: 'xmpbox-2.0.27'
+	implementation name: 'pdfbox-2.0.27'
+	implementation name: 'fontbox-2.0.27'
+	implementation name: 'graphics2d-0.36'
+
+	//ActiveMQ
+	implementation 'org.springframework.boot:spring-boot-starter-activemq'
+	implementation 'org.apache.activemq:artemis-jakarta-client-all:2.24.0'
 }
+
 
 tasks.named('test') {
 	useJUnitPlatform()

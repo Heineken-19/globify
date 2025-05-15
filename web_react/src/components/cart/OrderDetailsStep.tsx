@@ -2,6 +2,7 @@ import React from 'react';
 import { Paper, Text, Divider, Table, Group, Button } from '@mantine/core';
 import { FoxpostPoint } from '../../types';
 import { CartItem } from '../../types';
+import { formatPrice } from '../../utils/formatPrice';
 
 interface Props {
   cart: CartItem[];
@@ -18,6 +19,7 @@ interface Props {
   onPrev: () => void; // ✅ Hiányzó onPrev hozzáadása
   onSubmit: () => void; // ✅ Hiányzó onSubmit hozzáadása
   loading: boolean; // ✅ Hiányzó loading hozzáadása
+  usedPoints: number;
 }
 
 const OrderDetailsStep: React.FC<Props> = ({
@@ -33,7 +35,8 @@ const OrderDetailsStep: React.FC<Props> = ({
   shippingCost,
   onPrev,
   onSubmit,
-  loading
+  loading,
+  usedPoints
 }) => {
   return (
     <Paper shadow="sm" p="lg" mt="lg">
@@ -53,7 +56,7 @@ const OrderDetailsStep: React.FC<Props> = ({
             <tr key={item.id}>
               <td>{item.name}</td>
               <td>{item.quantity} db</td>
-              <td>{(item.price * item.quantity).toLocaleString()} Ft</td>
+              <td>{formatPrice(item.price * item.quantity)}</td>
             </tr>
 
 
@@ -74,12 +77,30 @@ const OrderDetailsStep: React.FC<Props> = ({
                 <td style={{ color: 'orange' }}>Kedvezmény:</td>
                 <td></td>
                 <td style={{ color: 'orange' }}>
-                  - {discount.toLocaleString()} Ft
+                  - {formatPrice(discount)}
                 </td>
               </tr>
             </>
           )}
-
+          {usedPoints > 0 && (
+            <>
+              <tr>
+                <td colSpan={3}>
+                  <div
+                    style={{
+                      borderTop: '1px solid #ccc',
+                      margin: '8px 0',
+                    }}
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td style={{ color: 'blue' }}>Hűségpont levonás:</td>
+                <td>{usedPoints} pont</td>
+                <td style={{ color: 'blue' }}>- {formatPrice(usedPoints)}</td>
+              </tr>
+            </>
+          )}
           <tr>
             <td colSpan={3}>
               <div
@@ -94,11 +115,10 @@ const OrderDetailsStep: React.FC<Props> = ({
             <td style={{ fontWeight: 'bold' }}>Termékek ára:</td>
             <td></td>
             <td style={{ fontWeight: 'bold' }}>
-              {(
-                cart.reduce((sum, item) => sum + item.price * item.quantity, 0) - // ✅ Termékek árának kiszámítása
-                discount
-              ).toLocaleString()}{' '}
-              Ft
+              {formatPrice(
+                cart.reduce((sum, item) => sum + item.price * item.quantity, 0) -
+                discount - usedPoints
+              )}
             </td>
           </tr>
         </tbody>
@@ -148,7 +168,7 @@ const OrderDetailsStep: React.FC<Props> = ({
 
       <Group justify="apart">
         <Text>Szállítási költség:</Text>
-        <Text>{shippingCost ? `${shippingCost.toLocaleString()} Ft` : 'Ingyenes'}</Text>
+        <Text>{shippingCost ? `${formatPrice(shippingCost)}` : 'Ingyenes'}</Text>
       </Group>
 
       <Group justify="space-between" mt="md">
@@ -156,7 +176,7 @@ const OrderDetailsStep: React.FC<Props> = ({
           Végösszeg:
         </Text>
         <Text size="md" fw={500}>
-          {total.toLocaleString()} Ft
+          {formatPrice(total)}
         </Text>
       </Group>
 

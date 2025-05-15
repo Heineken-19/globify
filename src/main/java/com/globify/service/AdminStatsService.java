@@ -2,10 +2,11 @@ package com.globify.service;
 
 import com.globify.repository.OrderItemRepository;
 import com.globify.repository.OrderRepository;
+import com.globify.repository.SubscriberRepository;
 import com.globify.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.PageRequest;
 
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -21,10 +22,13 @@ public class AdminStatsService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
 
-    public AdminStatsService(UserRepository userRepository, OrderRepository orderRepository, OrderItemRepository orderItemRepository) {
+    private final SubscriberRepository subscriberRepository;
+
+    public AdminStatsService(UserRepository userRepository, OrderRepository orderRepository, OrderItemRepository orderItemRepository, SubscriberRepository subscriberRepository) {
         this.userRepository = userRepository;
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
+        this.subscriberRepository = subscriberRepository;
     }
 
     // 🔹 1️⃣ Adott napi regisztrációk száma
@@ -75,34 +79,61 @@ public class AdminStatsService {
         return response;
     }
 
-    // 🔹 Heti / havi bevétel statisztika
-    public Map<String, Object> getRevenueStats(String period) {
-        LocalDate startDate;
-        if ("weekly".equalsIgnoreCase(period)) {
-            startDate = LocalDate.now().minusWeeks(1);
-        } else if ("monthly".equalsIgnoreCase(period)) {
-            startDate = LocalDate.now().minusMonths(1);
-        } else {
-            throw new IllegalArgumentException("Érvénytelen időszak: weekly vagy monthly kell legyen.");
+    public List<Map<String, Object>> getWeeklyRevenueForLast5Weeks() {
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        LocalDate today = LocalDate.now();
+
+        for (int i = 4; i >= 0; i--) {
+            LocalDate monday = today.minusWeeks(i).with(java.time.DayOfWeek.MONDAY);
+            LocalDate sunday = monday.plusDays(6);
+
+            BigDecimal totalRevenue = orderRepository.sumTotalPriceByCreatedAtBetween(
+                    monday.atStartOfDay(),
+                    sunday.atTime(LocalTime.MAX)
+            );
+
+            Map<String, Object> weekData = new HashMap<>();
+            weekData.put("startDate", monday.toString());
+            weekData.put("endDate", sunday.toString());
+            weekData.put("totalRevenue", totalRevenue != null ? totalRevenue : BigDecimal.ZERO);
+
+            result.add(weekData);
         }
 
-        // 🔹 Pontos időszűrés az időintervallumra
-        LocalDateTime startDateTime = startDate.atStartOfDay(); // 00:00:00
-        LocalDateTime endDateTime = LocalDate.now().atTime(LocalTime.MAX); // 23:59:59
+        return result;
+    }
 
-        BigDecimal totalRevenue = orderRepository.sumTotalPriceByCreatedAtBetween(startDateTime, endDateTime);
+    public List<Map<String, Object>> getMonthlyRevenueForLast5Months() {
+        List<Map<String, Object>> result = new ArrayList<>();
 
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("period", period);
-        stats.put("startDate", startDate.toString());
-        stats.put("endDate", LocalDate.now().toString());
-        stats.put("totalRevenue", totalRevenue != null ? totalRevenue : BigDecimal.ZERO);
-        return stats;
+        LocalDate today = LocalDate.now();
+
+        for (int i = 4; i >= 0; i--) {
+            LocalDate firstDayOfMonth = today.minusMonths(i).withDayOfMonth(1);
+            LocalDate lastDayOfMonth = firstDayOfMonth.withDayOfMonth(
+                    Math.min(30, firstDayOfMonth.lengthOfMonth())
+            );
+            BigDecimal totalRevenue = orderRepository.sumTotalPriceByCreatedAtBetween(
+                    firstDayOfMonth.atStartOfDay(),
+                    lastDayOfMonth.atTime(LocalTime.MAX)
+            );
+
+            Map<String, Object> monthData = new HashMap<>();
+            monthData.put("month", firstDayOfMonth.getMonth().toString());
+            monthData.put("startDate", firstDayOfMonth.toString());
+            monthData.put("endDate", lastDayOfMonth.toString());
+            monthData.put("totalRevenue", totalRevenue != null ? totalRevenue : BigDecimal.ZERO);
+
+            result.add(monthData);
+        }
+
+        return result;
     }
 
     // 🔹 Legtöbbet vásárolt termékek
     public List<Map<String, Object>> getTopProducts(int limit) {
-        return orderItemRepository.findTopProducts(limit);
+        return orderItemRepository.findTopProducts(PageRequest.of(0, limit));
     }
 
     public List<Map<String, Object>> getUserActivity() {
@@ -121,5 +152,21 @@ public class AdminStatsService {
         }
 
         return activityData;
+    }
+
+    public List<Map<String, Object>> getDailyNewsletterSubscriptions(LocalDate startDate, LocalDate endDate) {
+        List<Map<String, Object>> stats = new ArrayList<>();
+
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            long count = subscriberRepository.countByCreatedAtBetween(
+                    date.atStartOfDay(), date.plusDays(1).atStartOfDay());
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("date", date.toString());
+            data.put("subscriptions", count);
+            stats.add(data);
+        }
+
+        return stats;
     }
 }

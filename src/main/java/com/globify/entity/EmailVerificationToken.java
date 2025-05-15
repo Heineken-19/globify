@@ -21,10 +21,13 @@ public class EmailVerificationToken {
     @Column(nullable = false, unique = true)
     private String token;
 
-    @OneToOne
+    @Column(nullable = false)
+    private LocalDateTime expiryDate;
+
+
+    @OneToOne(orphanRemoval = true)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false)
-    private LocalDateTime expiryDate;
+
 }

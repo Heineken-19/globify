@@ -1,7 +1,8 @@
 package com.globify.service;
 
-import com.globify.entity.EmailLog;
+import com.globify.entity.*;
 import com.globify.repository.EmailLogRepository;
+import com.globify.template.EmailTemplateBuilder;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
@@ -13,6 +14,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 
+import java.io.File;
 import java.util.List;
 
 @Service
@@ -26,208 +28,72 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final EmailLogRepository emailLogRepository;
     private final SubscriberService subscriberService;
+    private final EmailTemplateBuilder templateBuilder;
 
     @Value("${spring.mail.username}")
     private String fromEmail;
 
-    public EmailService(JavaMailSender mailSender, EmailLogRepository emailLogRepository, SubscriberService subscriberService) {
+    public EmailService(JavaMailSender mailSender, EmailLogRepository emailLogRepository, SubscriberService subscriberService, EmailTemplateBuilder templateBuilder) {
         this.mailSender = mailSender;
         this.emailLogRepository = emailLogRepository;
         this.subscriberService = subscriberService;
+        this.templateBuilder = templateBuilder;
     }
 
     @Async
     public void sendEmailVerification(String to, String token) {
         String verificationUrl = frontendUrl + "/verify-email?token=" + token;
         String subject = "Email megerősítése";
-
-        String content = """
-            <html>
-            <head>
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        background-color: #f4f4f4;
-                        margin: 0;
-                        padding: 0;
-                    }
-                    .email-container {
-                        max-width: 600px;
-                        margin: 20px auto;
-                        background: #ffffff;
-                        padding: 20px;
-                        border-radius: 10px;
-                        box-shadow: 0px 2px 10px rgba(0,0,0,0.1);
-                    }
-                    .email-header {
-                        background: #28a745;
-                        color: #ffffff;
-                        text-align: center;
-                        padding: 10px 0;
-                        font-size: 24px;
-                        font-weight: bold;
-                        border-radius: 10px 10px 0 0;
-                    }
-                    .email-content {
-                        padding: 20px;
-                        font-size: 16px;
-                        color: #333;
-                    }
-                    .cta-button {
-                        display: inline-block;
-                        margin-top: 20px;
-                        padding: 10px 20px;
-                        background: #28a745;
-                        color: #ffffff;
-                        text-decoration: none;
-                        border-radius: 5px;
-                        font-weight: bold;
-                    }
-                    .email-footer {
-                        text-align: center;
-                        font-size: 12px;
-                        color: #777;
-                        margin-top: 20px;
-                        padding-top: 10px;
-                        border-top: 1px solid #ddd;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="email-container">
-                    <div class="email-header">Email Megerősítés</div>
-                    <div class="email-content">
-                        <p>Kedves Felhasználó!</p>
-                        <p>Kérlek kattints az alábbi gombra az email címed megerősítéséhez:</p>
-                        <a href="%s" class="cta-button">Email megerősítése</a>
-                        <p>Ha nem te regisztráltál, hagyd figyelmen kívül ezt az üzenetet.</p>
-                    </div>
-                    <div class="email-footer">
-                        <p>Üdvözlettel,<br>Globify Csapat</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """.formatted(verificationUrl);
-
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, "UTF-8");
-            helper.setFrom(fromEmail);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(content, true);
-            mailSender.send(message);
-
-            // Sikeres email küldés loggolás
-            emailLogRepository.save(new EmailLog(to, subject, "SUCCESS", null));
-            logger.info("📩 Email megerősítés elküldve: Címzett={}", to);
-
-        } catch (MessagingException e) {
-            // Sikertelen küldés loggolás
-            emailLogRepository.save(new EmailLog(to, subject, "FAILED", e.getMessage()));
-            logger.error("⚠️ Hiba történt az email megerősítés küldésekor: Címzett={}, Hiba={}", to, e.getMessage());
-            throw new RuntimeException("Email küldése sikertelen", e);
-        }
+        String content = templateBuilder.buildVerificationEmail(verificationUrl);
+        sendEmail(to, subject, content);
     }
 
-
     @Async
-    public void sendOrderUpdate(String to, String message, Long orderId) {
+    public void sendOrderUpdate(Order order) {
         String subject = "Rendelés állapotváltozás";
+        String link = frontendUrl + "/profile/orders";
+        String statusLabel = getStatusLabel(order.getStatus());
+        String message = "A rendelésed állapota megváltozott: " + statusLabel;
+        String content = templateBuilder.buildOrderUpdateEmail(message, link);
+        String email = order.getUser() != null
+                ? order.getUser().getEmail()
+                : order.getGuestEmail(); // 🔹 vendégek
 
-        String content = """
-            <html>
-            <head>
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        background-color: #f4f4f4;
-                        margin: 0;
-                        padding: 0;
-                    }
-                    .email-container {
-                        max-width: 600px;
-                        margin: 20px auto;
-                        background: #ffffff;
-                        padding: 20px;
-                        border-radius: 10px;
-                        box-shadow: 0px 2px 10px rgba(0,0,0,0.1);
-                    }
-                    .email-header {
-                        background: #28a745;
-                        color: #ffffff;
-                        text-align: center;
-                        padding: 10px 0;
-                        font-size: 24px;
-                        font-weight: bold;
-                        border-radius: 10px 10px 0 0;
-                    }
-                    .email-content {
-                        padding: 20px;
-                        font-size: 16px;
-                        color: #333;
-                    }
-                    .cta-button {
-                        display: inline-block;
-                        margin-top: 20px;
-                        padding: 10px 20px;
-                        background: #28a745;
-                        color: #ffffff;
-                        text-decoration: none;
-                        border-radius: 5px;
-                        font-weight: bold;
-                    }
-                    .email-footer {
-                        text-align: center;
-                        font-size: 12px;
-                        color: #777;
-                        margin-top: 20px;
-                        padding-top: 10px;
-                        border-top: 1px solid #ddd;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="email-container">
-                    <div class="email-header">Webshop Rendelés</div>
-                    <div class="email-content">
-                        <p>Kedves Vásárló!</p>
-                        <p>%s</p>
-                        <p>Kattints az alábbi gombra a rendelésed megtekintéséhez:</p>
-                        <a href="%s/admin/order" class="cta-button">Rendelés megtekintése</a>
-                        ""\".formatted(frontendUrl);
-                    </div>
-                    <div class="email-footer">
-                        <p>Ha bármilyen kérdésed van, lépj kapcsolatba velünk: <br>
-                        <a href="mailto:support@globify.hu">support@globify.hu</a></p>
-                        <p>Üdvözlettel,<br>Webshop Csapat</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """.formatted(message, orderId);
+        logger.info("📩 Email küldése a rendelés státuszfrissítésről: {}", email);
 
+        sendEmail(email, subject, content);
+    }
+
+    public void sendOrderWithInvoice(Order order, File pdfFile) {
         try {
-            MimeMessage email = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(email, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, "UTF-8");
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
             helper.setFrom(fromEmail);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(content, true);
-            mailSender.send(email);
+            String recipientEmail = order.getUser() != null
+                    ? order.getUser().getEmail()
+                    : order.getGuestEmail();
 
-            emailLogRepository.save(new EmailLog(to, subject, "SUCCESS", null));
+            helper.setTo(recipientEmail);
+            helper.setSubject("Számlád a rendelésről #" + order.getId());
+            String recipientName = order.getUser() != null
+                    ? order.getUser().getFirstName()
+                    : order.getGuestEmail();
 
-            logger.info("📨 Email sikeresen elküldve: Címzett={}, Tárgy={}, RendelésID={}", to, subject, orderId);
+            helper.setText(
+                    "Kedves " + recipientName + "!\n\n" +
+                            "Köszönjük a rendelésed! Csatoltan küldjük a hivatalos számlát.\n\n" +
+                            "Üdvözlettel,\nJS Global Webshop");
 
-        } catch (MessagingException e) {
-            // ❌ Hiba loggolás adatbázisba
-            emailLogRepository.save(new EmailLog(to, subject, "FAILED", e.getMessage()));
+            helper.addAttachment(pdfFile.getName(), pdfFile);
 
-            logger.error("⚠️ Hiba történt az email küldésekor: Címzett={}, RendelésID={}, Hiba={}",
-                    to, orderId, e.getMessage());
-            throw new RuntimeException("Email küldése sikertelen!", e);
+            logger.info("📩 Számla email küldése: {}", recipientEmail);
+
+            mailSender.send(message);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Email küldése sikertelen: " + e.getMessage());
         }
     }
 
@@ -235,190 +101,54 @@ public class EmailService {
     public void sendPasswordResetEmail(String to, String token) {
         String resetUrl = frontendUrl + "/reset-password?token=" + token;
         String subject = "Jelszó visszaállítása";
-
-        String content = """
-            <html>
-            <head>
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        background-color: #f4f4f4;
-                        margin: 0;
-                        padding: 0;
-                    }
-                    .email-container {
-                        max-width: 600px;
-                        margin: 20px auto;
-                        background: #ffffff;
-                        padding: 20px;
-                        border-radius: 10px;
-                        box-shadow: 0px 2px 10px rgba(0,0,0,0.1);
-                    }
-                    .email-header {
-                        background: #dc3545;
-                        color: #ffffff;
-                        text-align: center;
-                        padding: 10px 0;
-                        font-size: 24px;
-                        font-weight: bold;
-                        border-radius: 10px 10px 0 0;
-                    }
-                    .email-content {
-                        padding: 20px;
-                        font-size: 16px;
-                        color: #333;
-                    }
-                    .cta-button {
-                        display: inline-block;
-                        margin-top: 20px;
-                        padding: 10px 20px;
-                        background: #dc3545;
-                        color: #ffffff;
-                        text-decoration: none;
-                        border-radius: 5px;
-                        font-weight: bold;
-                    }
-                    .email-footer {
-                        text-align: center;
-                        font-size: 12px;
-                        color: #777;
-                        margin-top: 20px;
-                        padding-top: 10px;
-                        border-top: 1px solid #ddd;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="email-container">
-                    <div class="email-header">Jelszó visszaállítás</div>
-                    <div class="email-content">
-                        <p>Kedves Felhasználó!</p>
-                        <p>Úgy tűnik, elfelejtetted a jelszavad. Kérlek kattints az alábbi gombra a visszaállításhoz:</p>
-                        <a href="%s" class="cta-button">Jelszó visszaállítása</a>
-                        <p>Ha nem te kérted ezt a műveletet, hagyd figyelmen kívül ezt az üzenetet.</p>
-                    </div>
-                    <div class="email-footer">
-                        <p>Üdvözlettel,<br>Globify Csapat</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """.formatted(resetUrl);
-
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, "UTF-8");
-            helper.setFrom(fromEmail);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(content, true);
-            mailSender.send(message);
-
-            emailLogRepository.save(new EmailLog(to, subject, "SUCCESS", null));
-            logger.info("📩 Jelszó-visszaállító email elküldve: Címzett={}", to);
-
-        } catch (MessagingException e) {
-            emailLogRepository.save(new EmailLog(to, subject, "FAILED", e.getMessage()));
-            logger.error("⚠️ Hiba történt a jelszó-visszaállító email küldésekor: Címzett={}, Hiba={}", to, e.getMessage());
-            throw new RuntimeException("Jelszó-visszaállító email küldése sikertelen", e);
-        }
+        String content = templateBuilder.buildResetPasswordEmail(resetUrl);
+        sendEmail(to, subject, content);
     }
 
     @Async
-    public void sendNewsletter(String subject, String message) {
+    public void sendNewsletter(NewsletterTemplate template) {
         List<String> recipients = subscriberService.getSubscribedEmails();
-
 
         if (recipients.isEmpty()) {
             logger.warn("⚠️ Nincs feliratkozott felhasználó a hírlevélhez.");
             return;
         }
 
-        logger.info("📨 Hírlevél küldése {} feliratkozott felhasználónak.", recipients.size());
+        String subject = template.getSubject();
+        String message = template.getMessage();
+        String imageBlock = "";
 
-        String contentTemplate = """
-        <html>
-        <head>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    background-color: #f9f9f9;
-                    margin: 0;
-                    padding: 0;
-                    text-align: center;
-                }
-                .email-container {
-                    max-width: 600px;
-                    margin: 20px auto;
-                    background: #ffffff;
-                    padding: 20px;
-                    border-radius: 10px;
-                    box-shadow: 0px 2px 10px rgba(0,0,0,0.1);
-                }
-                .email-header {
-                    background: #007bff;
-                    color: #ffffff;
-                    text-align: center;
-                    padding: 10px 0;
-                    font-size: 24px;
-                    font-weight: bold;
-                    border-radius: 10px 10px 0 0;
-                }
-                .email-content {
-                    padding: 20px;
-                    font-size: 16px;
-                    color: #333;
-                }
-                .unsubscribe-button {
-                    display: inline-block;
-                    margin-top: 20px;
-                    padding: 10px 20px;
-                    background: #28a745;
-                    color: #ffffff;
-                    text-decoration: none;
-                    border-radius: 5px;
-                    font-weight: bold;
-                }
-                .unsubscribe-button:hover {
-                    background: #218838;
-                }
-                .email-footer {
-                    text-align: center;
-                    font-size: 12px;
-                    color: #777;
-                    margin-top: 20px;
-                    padding-top: 10px;
-                    border-top: 1px solid #ddd;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="email-container">
-                <div class="email-header">🌟 Hírlevél 🌟</div>
-                <div class="email-content">
-                    <p>Kedves Olvasónk!</p>
-                    <p>%s</p>
-                    <p>Köszönjük, hogy velünk vagy!</p>
-                    <a href="%s" class="unsubscribe-button">Leiratkozás a hírlevélről</a>
-                </div>
-                <div class="email-footer">
-                    <p>Ha bármilyen kérdésed van, lépj kapcsolatba velünk:<br>
-                    <a href="mailto:support@globify.com">support@globify.com</a></p>
-                    <p>Üdvözlettel,<br>Globify Csapat</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """.formatted(message, frontendUrl + "/unsubscribe?email={EMAIL}");
+        if (template.getImageUrls() != null && !template.getImageUrls().isBlank()) {
+            String[] urls = template.getImageUrls().split(",");
+            StringBuilder builder = new StringBuilder();
+            builder.append("<div style=\"margin: 24px auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;\">");
+
+            for (String url : urls) {
+                builder.append(String.format("""
+                    <img src=\"%s\" alt=\"Hírlevél kép\" style=\"width: 180px; border-radius: 12px;\"/>
+                """, url.trim()));
+            }
+
+            builder.append("</div>");
+            imageBlock = builder.toString();
+        }
+
+        logger.info("📨 Hírlevél küldése {} feliratkozott felhasználónak.", recipients.size());
 
         for (String email : recipients) {
             try {
+                Subscriber subscriber = subscriberService.findByEmail(email);
+                subscriberService.ensureUnsubscribeToken(subscriber);
+                String unsubscribeLink = frontendUrl + "/unsubscribe?token=" + subscriber.getUnsubscribeToken();
+                String content = templateBuilder.buildNewsletterEmail(message, unsubscribeLink, imageBlock);
+
                 MimeMessage mimeMessage = mailSender.createMimeMessage();
                 MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, "UTF-8");
                 helper.setFrom(fromEmail);
                 helper.setTo(email);
                 helper.setSubject(subject);
-                helper.setText(contentTemplate.replace("{EMAIL}", email).formatted(message), true);
+                helper.setText(content, true);
+
                 mailSender.send(mimeMessage);
 
                 emailLogRepository.save(new EmailLog(email, subject, "SUCCESS", null));
@@ -430,4 +160,52 @@ public class EmailService {
             }
         }
     }
+
+    private void sendEmail(String to, String subject, String htmlContent) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlContent, true);
+            mailSender.send(message);
+            emailLogRepository.save(new EmailLog(to, subject, "SUCCESS", null));
+            logger.info("📩 Email elküldve: {}", to);
+        } catch (MessagingException e) {
+            emailLogRepository.save(new EmailLog(to, subject, "FAILED", e.getMessage()));
+            logger.error("⚠️ Email küldési hiba: {} | Hiba: {}", to, e.getMessage());
+            throw new RuntimeException("Email küldése sikertelen", e);
+        }
+    }
+
+
+    public void sendGuestCartLink(String email, String token) {
+        String link = frontendUrl + "/cart?guestToken=" + token;
+        String subject = "Töltsd ki a rendelésed!";
+        String htmlContent = templateBuilder.buildGuestCartLinkEmail(link); // 🔹 HTML sablon
+        sendEmail(email, subject, htmlContent); // 🔹 HTML email küldés
+    }
+
+    private String getStatusLabel(OrderStatus status) {
+        return switch (status) {
+            case PENDING -> "Függőben";
+            case PAID -> "Fizetve";
+            case CONFIRMED -> "Rendelés összekészítés alatt";
+            case SHIPPED -> "Átadva a futárnak";
+            case DELIVERED -> "Rendelés kiszállítva";
+            case CANCELED -> "A rendelés lemondva";
+        };
+    }
+
+    public void sendOrderConfirmationToGuest(Order order) {
+        String link = frontendUrl + "/guest-orders"; // vagy bármi
+        String content = templateBuilder.buildOrderUpdateEmail(
+                "Köszönjük a rendelésed!", link);
+        sendEmail(order.getGuestEmail(), "Rendelés visszaigazolás", content);
+    }
+
+
+
+
 }

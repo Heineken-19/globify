@@ -12,18 +12,19 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import com.globify.entity.Product;
 import com.globify.repository.ProductRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,35 +35,94 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
     private final ProductImageRepository productImageRepository;
     private final ProductDetailsRepository productDetailsRepository;
+    private final FileStorageService fileStorageService;
 
-    public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository, ProductImageRepository productImageRepository, ProductDetailsRepository productDetailsRepository) {
+    public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository, ProductImageRepository productImageRepository, ProductDetailsRepository productDetailsRepository, FileStorageService fileStorageService) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.productImageRepository = productImageRepository;  // Injektáljuk a konstruktorba
         this.productDetailsRepository = productDetailsRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     // 🔹 Összes termék gyorsítótárazása
     @Cacheable(value = "products")
-    public List<ProductDTO> getAllProducts(Long categoryId, String searchTerm) {
-        List<Product> products = productRepository.findAll((root, query, criteriaBuilder) -> {
+    public Page<ProductDTO> getAllProducts(List<String> categoryNames, String searchTerm, int page, int size, Boolean isNew, Boolean isSale, Boolean available,
+                                           List<String> light, List<String> water, List<String> type, Integer minMainSize, Integer maxMainSize, Double minPrice, Double maxPrice, Boolean isPopular) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        Specification<Product> spec = Specification.where(null);
+
             List<Predicate> predicates = new ArrayList<>();
 
-            if (categoryId != null) {
-                predicates.add(criteriaBuilder.equal(root.get("category").get("id"), categoryId));
-            }
+        if (categoryNames != null && !categoryNames.isEmpty()) {
+            spec = spec.and((root, query, cb) -> root.get("category").get("name").in(categoryNames));
+        }
 
-            if (searchTerm != null && !searchTerm.isEmpty()) {
-                String pattern = "%" + searchTerm.toLowerCase() + "%";
-                predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), pattern));
-            }
+        if (searchTerm != null && !searchTerm.isEmpty()) {
+            String pattern = "%" + searchTerm.toLowerCase() + "%";
+            spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("name")), pattern));
+        }
 
-            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
-        });
+        if (available != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("available"), available));
+        }
 
-        return products.stream()
-                .map(ProductDTO::new)
-                .collect(Collectors.toList());
+        if (isNew != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("isNew"), isNew));
+        }
+
+        if (isSale != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("isSale"), isSale));
+        }
+
+        if (minMainSize != null) {
+            spec = spec.and((root, query, cb) -> cb.ge(root.get("mainSize"), minMainSize));
+        }
+        if (maxMainSize != null) {
+            spec = spec.and((root, query, cb) -> cb.le(root.get("mainSize"), maxMainSize));
+        }
+
+        if (light != null && !light.isEmpty()) {
+            spec = spec.and((root, query, cb) -> root.join("productDetails").get("light").in(light));
+        }
+
+        if (water != null && !water.isEmpty()) {
+            spec = spec.and((root, query, cb) -> root.join("productDetails").get("water").in(water));
+        }
+
+        if (type != null && !type.isEmpty()) {
+            spec = spec.and((root, query, cb) -> {
+                Predicate typePredicate = cb.disjunction();
+                for (String t : type) {
+                    typePredicate = cb.or(typePredicate, cb.like(cb.lower(root.get("type")), "%" + t.toLowerCase() + "%"));
+                }
+                return typePredicate;
+            });
+        }
+
+        if (minPrice != null) {
+            spec = spec.and((root, query, cb) -> cb.ge(root.get("price"), minPrice));
+        }
+
+        if (maxPrice != null) {
+            spec = spec.and((root, query, cb) -> cb.le(root.get("price"), maxPrice));
+        }
+
+        if (Boolean.TRUE.equals(isPopular)) {
+            List<Long> ids = productRepository.findMostPopularProductIds(pageable);
+            List<Product> popularProducts = productRepository.findAllById(ids);
+            List<ProductDTO> dtoList = popularProducts.stream()
+                    .map(ProductDTO::new)
+                    .collect(Collectors.toList());
+            return new PageImpl<>(dtoList, pageable, dtoList.size());
+        }
+
+
+        Page<Product> productPage = productRepository.findAll(spec, pageable);
+        return productPage.map(ProductDTO::new);
     }
 
     // 🔹 Egyedi termék gyorsítótárazása
@@ -97,12 +157,13 @@ public class ProductService {
         if (product.getCategory() != null && product.getCategory().getId() != null) {
             Category category = categoryRepository.findById(product.getCategory().getId())
                     .orElseThrow(() -> new RuntimeException("Kategória nem található!"));
-
-            // 🔥 Kategória ID explicit beállítása
             product.setCategory(category);
         }
 
-        product.setId(null); // 🔹 Új termék létrehozásakor az ID-t null-ra állítjuk
+        product.setId(null);
+        product.setDiscountPercentage(product.getDiscountPercentage());
+        product.setMainSize(extractMainSize(product.getSize()));
+        product.setSlug(generateSlug(product.getName()));
         Product savedProduct = productRepository.save(product);
 
         if (files != null && !files.isEmpty()) {
@@ -124,6 +185,7 @@ public class ProductService {
             productDetailsRepository.save(details);
         }
 
+
         return new ProductDTO(savedProduct);
     }
 
@@ -133,27 +195,60 @@ public class ProductService {
         Product existingProduct = productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Termék nem található!"));
 
+
         if (updatedProduct.getCategory() != null) {
             Category category = categoryRepository.findById(updatedProduct.getCategory().getId())
                     .orElseThrow(() -> new RuntimeException("Kategória nem található!"));
             existingProduct.setCategory(category);
         }
 
-        // Termék adatainak frissítése
-        existingProduct.setName(updatedProduct.getName());
-        existingProduct.setTitle(updatedProduct.getTitle());
-        existingProduct.setDescription(updatedProduct.getDescription());
-        existingProduct.setSize(updatedProduct.getSize());
-        existingProduct.setType(updatedProduct.getType());
-        existingProduct.setPrice(updatedProduct.getPrice());
-        existingProduct.setStock(updatedProduct.getStock());
-        existingProduct.setAvailable(updatedProduct.getAvailable());
+        if (updatedProduct.getName() != null) {
+            existingProduct.setName(updatedProduct.getName());
+            existingProduct.setSlug(generateSlug(updatedProduct.getName()));
+        }
+        if (updatedProduct.getTitle() != null) {
+            existingProduct.setTitle(updatedProduct.getTitle());
+        }
+        if (updatedProduct.getDescription() != null) {
+            existingProduct.setDescription(updatedProduct.getDescription());
+        }
+        if (updatedProduct.getSize() != null) {
+            existingProduct.setSize(updatedProduct.getSize());
+        }
+        if (updatedProduct.getType() != null) {
+            existingProduct.setType(updatedProduct.getType());
+        }
+        if (updatedProduct.getPrice() != null) {
+            existingProduct.setPrice(updatedProduct.getPrice());
+        }
+        if (updatedProduct.getStock() != null) {
+            existingProduct.setStock(updatedProduct.getStock());
+        }
+        if (updatedProduct.getAvailable() != null) {
+            existingProduct.setAvailable(updatedProduct.getAvailable());
+        }
+        if (updatedProduct.getIsNew() != null) {
+            existingProduct.setIsNew(updatedProduct.getIsNew());
+        }
+        if (updatedProduct.getIsSale() != null) {
+            existingProduct.setIsSale(updatedProduct.getIsSale());
+        }
+        if (updatedProduct.getDiscountPercentage() != null) {
+            existingProduct.setDiscountPercentage(updatedProduct.getDiscountPercentage());
+        }
+
+        if (updatedProduct.getSize() != null) {
+            existingProduct.setSize(updatedProduct.getSize());
+            Double mainSizeValue = extractMainSize(updatedProduct.getSize());
+            existingProduct.setMainSize(mainSizeValue); // új méret alapján
+        }
 
         // Ha új fájlok vannak feltöltve, akkor mentsük azokat
         if (files != null && !files.isEmpty()) {
             deleteExistingImages(existingProduct);  // 🔹 Töröljük a régi képeket
             saveUploadedFiles(files, existingProduct);  // 🔹 Új képek feltöltése
         }
+
 
         ProductDetails existingDetails = productDetailsRepository.findByProductId(id).orElse(null);
         if (existingDetails != null) {
@@ -182,6 +277,12 @@ public class ProductService {
         productRepository.deleteById(productId);
     }
 
+    public ProductDTO getProductBySlug(String slug) {
+        Product product = productRepository.findBySlug(slug)
+                .orElseThrow(() -> new RuntimeException("Termék nem található slug alapján"));
+        return new ProductDTO(product);
+    }
+
     private void setDefaultImage(Product product) {
         ProductImage defaultImage = new ProductImage();
         defaultImage.setProduct(product);
@@ -201,33 +302,66 @@ public class ProductService {
 
         List<ProductImage> images = new ArrayList<>();
         for (MultipartFile file : files) {
-            String fileName = storeFile(file);
-            ProductImage image = new ProductImage();
-            image.setProduct(product);
-            image.setImagePath(fileName);
-            images.add(image);
+            try {
+                String fileName = fileStorageService.saveFile(file); // ✅ kezelt
+                ProductImage image = new ProductImage();
+                image.setProduct(product);
+                image.setImagePath(fileName);
+                images.add(image);
+            } catch (IOException e) {
+                // Logolhatod vagy akár dobhatod tovább egy runtime exception-nel
+                throw new RuntimeException("Nem sikerült a fájl mentése: " + e.getMessage());
+            }
         }
 
         productImageRepository.saveAll(images);
     }
 
 
-    public String storeFile(MultipartFile file) {
-        try {
-            String fileName = StringUtils.cleanPath(file.getOriginalFilename());
-            Path uploadDir = Paths.get("uploads");
+    @Cacheable(value = "products", key = "'new'")
+    public List<ProductDTO> getNewProducts() {
+        List<Product> newProducts = productRepository.findByIsNewTrueAndAvailableTrue();
+        return newProducts.stream()
+                .map(ProductDTO::new)
+                .collect(Collectors.toList());
+    }
 
-            if (!Files.exists(uploadDir)) {
-                Files.createDirectories(uploadDir);
-            }
+    @Cacheable(value = "products", key = "'sale'")
+    public List<ProductDTO> getSaleProducts() {
+        List<Product> newProducts = productRepository.findByIsSaleTrueAndAvailableTrue();
+        return newProducts.stream()
+                .map(ProductDTO::new)
+                .collect(Collectors.toList());
+    }
 
-            Path targetLocation = uploadDir.resolve(fileName);
-            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
-
-            return fileName;
-        } catch (IOException ex) {
-            throw new RuntimeException("Nem sikerült a fájl mentése: " + ex.getMessage());
+    private Double extractMainSize(String size) {
+        if (size == null || size.trim().isEmpty()) {
+            return null;
         }
+
+        // Numerikus érték ellenőrzése
+        try {
+            // Közvetlenül visszaadjuk, ha numerikus
+            return Double.parseDouble(size);
+        } catch (NumberFormatException e) {
+            // Ha nem numerikus, keresünk számot a szövegben
+            String numericPart = size.replaceAll("[^0-9.]", ""); // Csak számok és pont maradnak
+            if (!numericPart.isEmpty()) {
+                try {
+                    return Double.parseDouble(numericPart);
+                } catch (NumberFormatException ex) {
+                    return null;
+                }
+            }
+        }
+        return null; // Ha nem található szám
+    }
+
+    private String generateSlug(String name) {
+        return name.toLowerCase()
+                .replaceAll("[^a-z0-9áéíóöőúüű\\s]", "")
+                .replaceAll("\\s+", "-")
+                .replaceAll("-{2,}", "-");
     }
 
 }

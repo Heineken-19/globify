@@ -67,7 +67,7 @@ public class ProductImageController {
             return ResponseEntity.notFound().build();
         }
 
-        productImageService.deleteProductImage(image.get()); // 🔥 Cache törlés is megtörténik
+        productImageService.deleteProductImage(image.get());
 
         return ResponseEntity.ok().body("Image deleted successfully");
     }

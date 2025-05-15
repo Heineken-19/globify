@@ -56,14 +56,13 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+        http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         //Admin
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/coupons/reward").authenticated()
 
                         //Public
                         .requestMatchers("/api/auth/**").permitAll()
@@ -71,13 +70,15 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
                         .requestMatchers("/api/files/**").permitAll()
                         .requestMatchers("/api/email/**").permitAll()
-                        .requestMatchers("/uploads/**").permitAll()
+                        .requestMatchers("/uploads/products/**").permitAll()
+                        .requestMatchers("/uploads/newsletter/**").permitAll()
                         .requestMatchers("/api/shipping/check").permitAll()
                         .requestMatchers("/api/shipping/**").permitAll()
 
                         //Other
                         .requestMatchers("/api/user/**").authenticated()
                         .requestMatchers("/api/orders/**").authenticated()
+                        .requestMatchers("/api/orders/guest-orders").hasAnyRole("USER", "GUEST")
                         .requestMatchers("/api/address/**").authenticated()
 
                         //Review
@@ -108,6 +109,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/newsletter/subscribe", "/api/newsletter/unsubscribe").permitAll()
                         .requestMatchers("/api/newsletter/send").hasRole("ADMIN")
 
+                        .requestMatchers("/uploads/blog/**").permitAll()
+                        .requestMatchers("/api/blogposts/**").permitAll()
+
                         //Paypal
                         .requestMatchers("/api/orders/create-payment", "/api/orders/success").authenticated()
                         .requestMatchers("/api/orders/capture-payment").permitAll()
@@ -119,19 +123,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // 🔹 CORS konfiguráció a SecurityConfig-ban
-    @Bean
-    public CorsFilter corsFilter() {
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowCredentials(true);
-        config.setAllowedOrigins(List.of("http://localhost:3000", "https://jsglobal.hu")); // 🔹 Frontend URL
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
 
-        source.registerCorsConfiguration("/**", config);
-        return new CorsFilter(source);
-    }
 
     // 🔹 CORS beállítás SecurityConfig-ban
     @Bean
@@ -139,9 +131,17 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOrigins(List.of("http://localhost:3000", "https://jsglobal.hu")); // 🔹 Frontend URL
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        config.setAllowedOrigins(List.of("http://localhost:3000", "https://jsglobal.hu")); // frontend URL(ek)
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "PROPFIND"));
+        config.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "Origin",
+                "X-Requested-With"
+        ));
+        config.setExposedHeaders(List.of("Authorization")); // ha frontendnek kell auth token
+        config.setMaxAge(3600L); // preflight cache ideje (1 óra)
 
         source.registerCorsConfiguration("/**", config);
         return source;

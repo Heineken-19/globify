@@ -24,5 +24,6 @@ public class ProductDetails {
     private String light;
     private String water;
     private String extra;
+    @Column(columnDefinition = "TEXT")
     private String fact;
 }

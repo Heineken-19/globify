@@ -4,6 +4,7 @@ import com.globify.entity.Address;
 import com.globify.entity.User;
 import com.globify.repository.AddressRepository;
 import com.globify.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -104,8 +105,11 @@ public class AddressController {
         Optional<User> user = userRepository.findByEmail(userDetails.getUsername());
         Optional<Address> addressOptional = addressRepository.findById(id);
 
-        if (user.isEmpty() || addressOptional.isEmpty() || !addressOptional.get().getUser().getId().equals(user.get().getId())) {
+        if (user.isEmpty() || addressOptional.isEmpty()) {
             return ResponseEntity.notFound().build();
+        }
+        if (!addressOptional.get().getUser().getId().equals(user.get().getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
         addressRepository.deleteById(id);

@@ -19,7 +19,7 @@ public class AdminOrderDTO {
 
     private Long id;
     private String userEmail;
-    private BigDecimal total;
+    private BigDecimal finalPrice;
     private OrderStatus status;
     private LocalDateTime createdAt;
     private List<OrderItemDTO> orderItems;
@@ -27,10 +27,14 @@ public class AdminOrderDTO {
     private ShippingDTO shippingInfo;
 
     public static AdminOrderDTO fromEntity(Order order) {
+        String email = order.getUser() != null
+                ? order.getUser().getEmail()
+                : order.getGuestEmail(); // ✅ vendég email
+
         return new AdminOrderDTO(
                 order.getId(),
-                order.getUser().getEmail(),
-                order.getTotalPrice(),
+                email,
+                order.getFinalPrice(),
                 order.getStatus(),
                 order.getCreatedAt(),
                 order.getOrderItems().stream()
