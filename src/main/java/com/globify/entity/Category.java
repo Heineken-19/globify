@@ -22,7 +22,7 @@ public class Category {
     @Column(nullable = false, unique = true)
     private String name;
 
-    @JsonIgnore
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL)
+    @JsonIgnore // Elkerüli a végtelen ciklust a JSON-ban
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Product> products;
 }

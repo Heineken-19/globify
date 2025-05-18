@@ -6,8 +6,9 @@ export const login = async (email: string, password: string) => {
     if (response.status !== 200) {
       throw new Error("Sikertelen bejelentkezés.");
     }
-    const { token, user_id, role } = response.data;
+    const { token, refreshToken, user_id, role } = response.data;
     localStorage.setItem("token", token);
+    localStorage.setItem("refreshToken", refreshToken);
     localStorage.setItem("user_id", user_id);
     localStorage.setItem("role", role);
 
@@ -23,6 +24,17 @@ export const login = async (email: string, password: string) => {
       }
       throw new Error("Bejelentkezés sikertelen!");
   }
+};
+
+export const refreshAccessToken = async () => {
+  const refreshToken = localStorage.getItem("refreshToken");
+  if (!refreshToken) throw new Error("Nincs refresh token!");
+
+  const response = await api.post("/api/auth/refresh-token", { refreshToken });
+  const { token } = response.data;
+
+  localStorage.setItem("token", token);
+  return token;
 };
 
 export const register = async (email: string, password: string, referralCode?: string) => {
@@ -42,7 +54,10 @@ export const register = async (email: string, password: string, referralCode?: s
 };
 
 export const logout = () => {
-  localStorage.removeItem("token"); // 🔹 Token törlése kijelentkezéskor
+  localStorage.removeItem("token");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("user_id");
+  localStorage.removeItem("role");
 };
 
 export const sendVerificationEmail = async (email: string) => {

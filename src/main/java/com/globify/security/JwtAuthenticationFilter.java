@@ -1,5 +1,6 @@
 package com.globify.security;
 
+import io.jsonwebtoken.MalformedJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,33 +26,41 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+            throws ServletException, IOException {
+        final String authorizationHeader = request.getHeader("Authorization");
 
-        String token = getJwtFromRequest(request);
+        String username = null;
+        String jwt = null;
 
-        if (StringUtils.hasText(token) && jwtUtil.isTokenValid(token, jwtUtil.extractUsername(token))) {
-            String username = jwtUtil.extractUsername(token);
-            String role = jwtUtil.extractRole(token);
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            jwt = authorizationHeader.substring(7); // Eltávolítjuk a "Bearer " részt
 
-            if ("GUEST".equalsIgnoreCase(role)) {
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(username, null, null);
+            try {
+                username = jwtUtil.extractUsername(jwt);
+            } catch (MalformedJwtException e) {
+                logger.error("❌ Érvénytelen JWT formátum: " + e.getMessage(), e);
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Érvénytelen JWT token formátum.");
+                return;
+            } catch (Exception e) {
+                logger.error("❌ JWT feldolgozási hiba: " + e.getMessage(), e);
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Érvénytelen JWT token.");
+                return;
+            }
+        }
+
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
+
+            if (jwtUtil.isTokenValid(jwt, userDetails.getUsername())) {
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        userDetails, null, userDetails.getAuthorities());
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-            } else {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-            if (userDetails != null) {
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-            SecurityContextHolder.getContext().setAuthentication(authentication);
             }
-        }}
+        }
 
-        filterChain.doFilter(request, response);
+        chain.doFilter(request, response);
     }
 
     private String getJwtFromRequest(HttpServletRequest request) {

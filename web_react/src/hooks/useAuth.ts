@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { login, logout } from "../services/AuthService";
+import { login, logout, refreshAccessToken } from "../services/AuthService";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "./useUser";
 import { useNotification } from "../context/NotificationContext";
@@ -15,6 +15,25 @@ export const useAuth = () => {
   const { showSuccess, showError } = useNotification();
   const [guestEmail, setGuestEmail] = useState<string | null>(localStorage.getItem("guest_email"));
   const isGuest = !!guestEmail && !isLoggedIn;
+
+    useEffect(() => {
+    const handleTokenExpiration = async () => {
+      try {
+        if (!token) return;
+
+        const tokenExp = JSON.parse(atob(token.split(".")[1])).exp * 1000;
+        if (Date.now() > tokenExp) {
+          const newToken = await refreshAccessToken();
+          setToken(newToken);
+        }
+      } catch (err) {
+        showError("Bejelentkezés lejárt, kérjük jelentkezzen be újra.");
+        handleLogout();
+      }
+    };
+
+    handleTokenExpiration();
+  }, [token]);
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
@@ -48,13 +67,14 @@ export const useAuth = () => {
 
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     try {
-      const { token, user_id, role } = await login(email, password);
+      const { token, refreshToken, user_id, role } = await login(email, password);
       setToken(token);
       setUserId(user_id);
       setUserRole(role);
       setIsLoggedIn(true);
 
       localStorage.setItem("token", token);
+      localStorage.setItem("refreshToken", refreshToken);
       localStorage.setItem("user_id", user_id);
       localStorage.setItem("role", role);
 

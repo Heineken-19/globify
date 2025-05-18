@@ -1,5 +1,6 @@
 package com.globify.controller;
 
+import com.globify.config.SecurityConfig;
 import com.globify.dto.*;
 import com.globify.dto.LoginRequest;
 import com.globify.dto.RegisterRequest;
@@ -9,10 +10,8 @@ import com.globify.exception.EmailAlreadyUsedException;
 import com.globify.exception.InvalidEmailFormatException;
 import com.globify.repository.UserRepository;
 import com.globify.security.JwtUtil;
-import com.globify.service.EmailService;
-import com.globify.service.EmailVerificationService;
-import com.globify.service.GuestAuthService;
-import com.globify.service.RewardPointService;
+import com.globify.service.*;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -47,39 +47,59 @@ public class AuthController {
     private final EmailVerificationService emailVerificationService;
     private final RewardPointService rewardPointService;
     private final GuestAuthService guestAuthService;
+    private final SecurityConfig securityConfig;
 
     // Bejelentkezés
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
-
-        Optional<User> userOptional = userRepository.findByEmail(request.getEmail());
-        if (userOptional.isEmpty()) {
-            return ResponseEntity.status(401).body("Invalid credentials");
-        }
-
-        User user = userOptional.get();
-
-        if (!user.isEmailVerified()) {
-            logger.warn("⛔ Bejelentkezési próbálkozás sikertelen, email nincs hitelesítve: {}", user.getEmail());
-            return ResponseEntity.status(403).body("EMAIL_NOT_VERIFIED");
-        }
-
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        User user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new RuntimeException("User not found"));
 
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
+        String accessToken = jwtUtil.generateAccessToken(user.getEmail(), user.getRole().name());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
 
         Map<String, Object> response = new HashMap<>();
-        response.put("token", token);
+        response.put("token", accessToken);
+        response.put("refreshToken", refreshToken);
         response.put("user_id", user.getId());
         response.put("role", user.getRole().name());
 
-        logger.info("✅ Bejelentkezés sikeres: {}", user.getEmail());
         return ResponseEntity.ok(response);
+    }
 
+    @PostMapping("/refresh-token")
+    public ResponseEntity<?> refreshAccessToken(@RequestBody Map<String, String> request) {
+        String refreshToken = request.get("refreshToken");
+
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return ResponseEntity.badRequest().body("Hiányzó refresh token.");
+        }
+
+        if (!jwtUtil.validateToken(refreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Érvénytelen vagy lejárt refresh token.");
+        }
+
+        String email = jwtUtil.extractUsername(refreshToken);
+        Optional<User> userOpt = userRepository.findByEmail(email);
+
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Felhasználó nem található.");
+        }
+
+        User user = userOpt.get();
+        String accessToken = jwtUtil.generateAccessToken(user.getEmail(), user.getRole().name());
+
+        return ResponseEntity.ok(Map.of("accessToken", accessToken));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<?> register(@RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
+        String clientIp = httpRequest.getRemoteAddr();
+
+        if (!securityConfig.isRequestAllowed(clientIp)) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body("Túl sok próbálkozás. Próbálja újra később.");
+        }
 
         if (!request.getEmail().contains("@") || !request.getEmail().contains(".")) {
             throw new InvalidEmailFormatException("Az Email cím nem megfelelő");
@@ -177,7 +197,7 @@ public class AuthController {
         }
 
         User user = userOptional.get();
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
+        String token = jwtUtil.generateAccessToken(user.getEmail(), user.getRole().name());
         emailService.sendPasswordResetEmail(user.getEmail(), token);
 
         logger.info("📩 Jelszó-visszaállító email kiküldve: {}", user.getEmail());
@@ -187,12 +207,12 @@ public class AuthController {
     // ✅ Jelszó módosítása token alapján
     @PostMapping("/reset-password")
     public ResponseEntity<String> resetPassword(@RequestBody PasswordUpdateRequest request) {
-        String email = jwtUtil.validateToken(request.getToken());
-
-        if (email == null) {
+        if (!jwtUtil.validateToken(request.getToken())) {
             logger.warn("⛔ Érvénytelen vagy lejárt token: {}", request.getToken());
             return ResponseEntity.badRequest().body("Érvénytelen vagy lejárt token.");
         }
+
+        String email = jwtUtil.extractUsername(request.getToken());
 
         Optional<User> userOptional = userRepository.findByEmail(email);
 
@@ -209,7 +229,7 @@ public class AuthController {
         }
 
         User user = userOptional.get();
-        user.setPassword(passwordEncoder.encode(request.getNewPassword())); // Új jelszó titkosítása
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
         logger.info("✅ Jelszó sikeresen módosítva: {}", user.getEmail());
@@ -223,7 +243,7 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Email mező nem lehet üres.");
         }
 
-        String token = jwtUtil.generateToken(email, "GUEST");
+        String token = jwtUtil.generateAccessToken(email, "GUEST");
         emailService.sendGuestCartLink(email, token); // 🔹 Itt használjuk a metódust
         return ResponseEntity.ok("Email kiküldve");
     }
@@ -232,7 +252,11 @@ public class AuthController {
 
     @GetMapping("/validate-guest")
     public ResponseEntity<?> validateGuestToken(@RequestParam String token) {
-        String email = jwtUtil.validateToken(token);
+        if (!jwtUtil.validateToken(token)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Érvénytelen vagy lejárt token.");
+        }
+
+        String email = jwtUtil.extractUsername(token);
         if (email == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Érvénytelen vagy lejárt token.");
         }
@@ -248,5 +272,6 @@ public class AuthController {
         } while (userRepository.existsByReferralCode(code));
         return code;
     }
+
 }
 

@@ -29,7 +29,6 @@ import VerifyEmailPage from "./pages/VerifyEmailPage";
 import LoginPage from "./pages/LoginPage";
 import UnsubscribePage from "./pages/UnsubscribePage";
 import NewProducts from "./pages/NewProducts";
-import AdminDiscount from "./pages/admin/AdminDiscount";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { FavoriteProvider } from "./context/FavoriteContext";
@@ -117,7 +116,6 @@ function App() {
                               <Route path="/admin/order" element={<ProtectedRoute adminOnly><AdminOrder /></ProtectedRoute>} />
                               <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminUser /></ProtectedRoute>} />
                               <Route path="/admin/coupons" element={<ProtectedRoute adminOnly><AdminCouponsPage /></ProtectedRoute>} />
-                              <Route path="/admin/discounts" element={<ProtectedRoute adminOnly><AdminDiscount /></ProtectedRoute>} />
                               <Route path="/admin/shippings" element={<ProtectedRoute adminOnly><AdminShipping /></ProtectedRoute>} />
                               <Route path="/admin/import" element={<ProtectedRoute adminOnly><AdminImport /></ProtectedRoute>} />
                               <Route path="/admin/news" element={<ProtectedRoute adminOnly><AdminNewsPage /></ProtectedRoute>} />

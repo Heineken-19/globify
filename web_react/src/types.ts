@@ -7,7 +7,6 @@ export type Product = {
   price: number;
   available: boolean;
   stock: number;
-  category: string | null;
   imageUrls: string[];
   type: string;
   title: string;
@@ -21,6 +20,12 @@ export type Product = {
   isSale?: boolean;
   discountPercentage?: number;
   slug: string;
+  category: Category;
+};
+
+export type Category = {
+  id: number;
+  name: string;
 };
 
 export interface ProductPage {
@@ -314,5 +319,13 @@ export interface ShippingOption {
   id: number; 
   method: 'HOME_DELIVERY' | 'FOXPOST' | 'PACKETA' | 'SHOP';
   price: number;
+}
+
+export interface BlogPost {
+  id: number;
+  title: string;
+  slug: string;
+  description?: string;
+  imageUrl?: string;
 }
 export type ShippingOptionInput = Omit<ShippingOption, 'id'>;

@@ -96,7 +96,9 @@ dependencies {
 	//ActiveMQ
 	implementation 'org.springframework.boot:spring-boot-starter-activemq'
 	implementation 'org.apache.activemq:artemis-jakarta-client-all:2.24.0'
+
 }
+
 
 
 tasks.named('test') {

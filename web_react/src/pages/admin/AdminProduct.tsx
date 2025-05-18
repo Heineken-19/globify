@@ -48,54 +48,51 @@ const AdminProduct = () => {
 
 
       <Grid>
-        {products?.map((product: AdminProduct) => {
+  {products?.map((product: AdminProduct) => {
+    const imageUrl = product.imageUrls.length > 0
+      ? `${API_URL}/uploads/products/${product.imageUrls[0]}`
+      : `${API_URL}/uploads/products/default.jpg`;
 
-          const imageUrl = product.imageUrls.length > 0
-            ? `${API_URL}/uploads/products/${product.imageUrls[0]}`
-            : `${API_URL}/uploads/products//default.jpg`;
+    return (
+      <Grid.Col key={product.id} span={{ base: 12, sm: 6, md: 4, lg: 3 }}>
+        <Card shadow="sm" padding="lg" radius="md" withBorder>
+          <Card.Section>
+            <Image src={imageUrl} height={150} fit="cover" alt={product.name} />
+          </Card.Section>
 
-          return (
-            <Grid.Col key={product.id} span={{ base: 12, sm: 6, md: 4, lg: 3 }}>
-              <Card shadow="sm" padding="lg" radius="md" withBorder>
-                <Card.Section>
-                  <Image src={imageUrl} height={150} fit="cover" alt={product.name} />
-                </Card.Section>
+          <Title order={4} mt="md">{product.name}</Title>
+          <Text size="sm" color="dimmed" lineClamp={2}>{product.description}</Text>
+          
+          {product.isNew && (
+            <Text size="xs" color="green" style={{ fontWeight: 700 }}>
+              Új termék
+            </Text>
+          )}
 
-                <Title order={4} mt="md">{product.name}</Title>
+          <Text fw={500} size="lg" mt="md">{product.price} Ft</Text>
+          {product.isSale && (
+            <Text size="xs" color="red" style={{ fontWeight: 700 }}>
+              Akció: {product.discountPercentage ?? 0}%
+            </Text>
+          )}
+          <Text size="sm" color={product.available ? "green" : "red"}>
+            {product.available ? "Elérhető" : "Nem elérhető"}
+          </Text>
+          <Text size="sm" color="gray">Készlet: {product.stock}</Text>
 
-                <Text size="sm" color="dimmed" lineClamp={2}>{product.description}</Text>
-                {product.isNew && (
-                  <Text size="xs" color="green" style={{ fontWeight: 700 }}>
-                    Új termék
-                  </Text>
-                )}
-
-                <Text fw={500} size="lg" mt="md">{product.price} Ft</Text>
-                {product.isSale && (
-                  <Text size="xs" color="red" style={{ fontWeight: 700 }}>
-                    Akció: {product.discountPercentage ?? 0}%
-                  </Text>
-                )}
-                <Text size="sm" color={product.available ? "green" : "red"}>
-                  {product.available ? "Elérhető" : "Nem elérhető"}
-                </Text>
-                <Text size="sm" color="gray">Készlet: {product.stock}</Text>
-
-
-                <Group justify="space-between" mt="md">
-                  <Button onClick={() => openEditModal(product)} variant="outline" fullWidth>
-                    Szerkesztés
-                  </Button>
-                  <Button color="red" fullWidth mt="md" radius="md" onClick={() => deleteProduct(product.id)}>
-                    Törlés
-                  </Button>
-
-                </Group>
-              </Card>
-            </Grid.Col>
-          );
-        })}
-      </Grid>
+          <Group justify="space-between" mt="md">
+            <Button onClick={() => openEditModal(product)} variant="outline" fullWidth>
+              Szerkesztés
+            </Button>
+            <Button color="red" fullWidth mt="md" radius="md" onClick={() => deleteProduct(product.id)}>
+              Törlés
+            </Button>
+          </Group>
+        </Card>
+      </Grid.Col>
+    );
+  })}
+</Grid>
 
       <Group justify="center" mt="lg">
         <Pagination

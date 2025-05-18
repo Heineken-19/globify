@@ -20,10 +20,10 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
-
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 @Configuration
 @EnableWebSecurity
@@ -32,6 +32,9 @@ public class SecurityConfig {
     private final JwtUtil jwtUtil;
     private final UserDetailsServiceImpl userDetailsService;
     private final UserRepository userRepository;
+
+    private final ConcurrentMap<String, Integer> requestCounts = new ConcurrentHashMap<>();
+    private static final int MAX_REQUESTS_PER_MINUTE = 20;
 
     public SecurityConfig(JwtUtil jwtUtil, UserDetailsServiceImpl userDetailsService, UserRepository userRepository) {
         this.jwtUtil = jwtUtil;
@@ -51,88 +54,46 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        return new UserAuthenticationProvider(userDetailsService, passwordEncoder(), userRepository); // 🔹 Hiányzó paraméter hozzáadva
+        return new UserAuthenticationProvider(userDetailsService, passwordEncoder(), userRepository);
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
+        http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        //Admin
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/coupons/reward").authenticated()
-
-                        //Public
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/categories/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
-                        .requestMatchers("/api/files/**").permitAll()
-                        .requestMatchers("/api/email/**").permitAll()
-                        .requestMatchers("/uploads/products/**").permitAll()
-                        .requestMatchers("/uploads/newsletter/**").permitAll()
-                        .requestMatchers("/api/shipping/check").permitAll()
-                        .requestMatchers("/api/shipping/**").permitAll()
-
-                        //Other
-                        .requestMatchers("/api/user/**").authenticated()
-                        .requestMatchers("/api/orders/**").authenticated()
-                        .requestMatchers("/api/orders/guest-orders").hasAnyRole("USER", "GUEST")
-                        .requestMatchers("/api/address/**").authenticated()
-
-                        //Review
-                        .requestMatchers("/api/reviews/**").permitAll()
-                        .requestMatchers("/api/reviews/{userId}/{productId}").authenticated()
-                        .requestMatchers("/api/reviews/{userId}/{reviewId}").authenticated()
-
-                        //Favorite
-                        .requestMatchers("/api/favorites/**").authenticated()
-
-                        //Products
-                        .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/product-images/**").authenticated()
-
-                        //Coupon
-                        .requestMatchers("GET", "/api/coupons/apply").authenticated()
-                        .requestMatchers("GET", "/api/coupons").permitAll()
-                        .requestMatchers("POST", "/api/coupons").hasRole("ADMIN")
-                        .requestMatchers("DELETE", "/api/coupons/{id}").hasRole("ADMIN")
-
-                        //Discount
-                        .requestMatchers("GET", "/api/discounts/apply").authenticated()
-                        .requestMatchers("GET", "/api/discounts").permitAll()
-                        .requestMatchers("POST", "/api/discounts").hasRole("ADMIN")
-                        .requestMatchers("DELETE", "/api/discounts/{id}").hasRole("ADMIN")
-
-                        //Subscribes
-                        .requestMatchers("/api/newsletter/subscribe", "/api/newsletter/unsubscribe").permitAll()
-                        .requestMatchers("/api/newsletter/send").hasRole("ADMIN")
-
-                        .requestMatchers("/uploads/blog/**").permitAll()
-                        .requestMatchers("/api/blogposts/**").permitAll()
-
-                        //Paypal
-                        .requestMatchers("/api/orders/create-payment", "/api/orders/success").authenticated()
-                        .requestMatchers("/api/orders/capture-payment").permitAll()
+                        .requestMatchers("/uploads/**").permitAll() // ✅ Statikus fájlok engedélyezése
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, userDetailsService), UsernamePasswordAuthenticationFilter.class);
-
+                .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, userDetailsService), UsernamePasswordAuthenticationFilter.class)
+                .headers(headers -> headers
+                        .contentSecurityPolicy(csp -> csp
+                                .policyDirectives("default-src 'self'; script-src 'self'; object-src 'none';"))
+                );
         return http.build();
     }
 
+    public boolean isRequestAllowed(String ip) {
+        requestCounts.putIfAbsent(ip, 0);
+        int requests = requestCounts.get(ip);
 
+        if (requests >= MAX_REQUESTS_PER_MINUTE) {
+            return false;
+        }
 
-    // 🔹 CORS beállítás SecurityConfig-ban
+        requestCounts.put(ip, requests + 1);
+        return true;
+    }
+
     @Bean
     public UrlBasedCorsConfigurationSource corsConfigurationSource() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOrigins(List.of("http://localhost:3000", "https://jsglobal.hu")); // frontend URL(ek)
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "PROPFIND"));
+        config.setAllowedOrigins(List.of("http://localhost:3000", "https://jsglobal.hu"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         config.setAllowedHeaders(List.of(
                 "Authorization",
                 "Content-Type",
@@ -140,8 +101,8 @@ public class SecurityConfig {
                 "Origin",
                 "X-Requested-With"
         ));
-        config.setExposedHeaders(List.of("Authorization")); // ha frontendnek kell auth token
-        config.setMaxAge(3600L); // preflight cache ideje (1 óra)
+        config.setExposedHeaders(List.of("Authorization"));
+        config.setMaxAge(3600L);
 
         source.registerCorsConfiguration("/**", config);
         return source;

@@ -27,4 +27,5 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleNumberFormatException(NumberFormatException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Érvénytelen számformátum: " + ex.getMessage());
     }
+
 }

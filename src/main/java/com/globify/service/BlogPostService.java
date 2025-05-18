@@ -3,8 +3,12 @@ package com.globify.service;
 import com.globify.dto.BlogPostRequestDTO;
 import com.globify.dto.BlogPostResponseDTO;
 import com.globify.entity.BlogPost;
+import com.globify.exception.ResourceNotFoundException;
 import com.globify.repository.BlogPostRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -27,7 +31,7 @@ public class BlogPostService {
     public BlogPostResponseDTO getBlogPostBySlug(String slug) {
         return blogPostRepository.findBySlug(slug)
                 .map(this::mapToResponseDTO)
-                .orElseThrow(() -> new RuntimeException("BlogPost not found with slug: " + slug));
+                .orElseThrow(() -> new ResourceNotFoundException("BlogPost not found with slug: " + slug));
     }
 
     public BlogPostResponseDTO createBlogPost(BlogPostRequestDTO requestDTO) {
@@ -105,5 +109,10 @@ public class BlogPostService {
                 .trim()
                 .replaceAll("\s+", "-")
                 .replaceAll("-+", "-");
+    }
+
+    public Page<BlogPost> searchBlogs(String searchTerm, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return blogPostRepository.searchBlogs(searchTerm, pageable);
     }
 }

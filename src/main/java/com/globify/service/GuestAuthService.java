@@ -11,13 +11,18 @@ public class GuestAuthService {
     private final JwtUtil jwtUtil;
 
     public boolean isValidGuestToken(String token) {
-        String email = jwtUtil.validateToken(token);
-        String role = jwtUtil.extractRole(token);
+        if (!jwtUtil.validateToken(token)) {
+            return false;
+        }
 
-        return email != null && role != null && role.equals("GUEST");
+        String role = jwtUtil.extractRole(token);
+        return role != null && role.equals("GUEST");
     }
 
     public String extractEmailFromToken(String token) {
-        return jwtUtil.validateToken(token); // ugyanazt használjuk, ami a user emailt visszaadja
+        if (!jwtUtil.validateToken(token)) {
+            return null; // Ha a token nem érvényes, akkor null-t adunk vissza
+        }
+        return jwtUtil.extractUsername(token); // A felhasználó email-címe
     }
 }

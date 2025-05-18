@@ -89,14 +89,14 @@ export default function ProductSlugPage() {
                 >
                     Termékek
                 </Link>
-                {product.category && (
+                {typeof product.category === "object" && product.category.name && (
                     <>
                         {" "}-{" "}
                         <Link
-                            to={`/products?category=${encodeURIComponent(product.category)}`}
+                            to={`/products?category=${encodeURIComponent(product.category.name)}`}
                             style={{ color: "#1a7f37", textDecoration: "underline", fontWeight: 500 }}
                         >
-                            {product.category}
+                            {product.category.name}
                         </Link>
                     </>
                 )}
@@ -109,11 +109,11 @@ export default function ProductSlugPage() {
                     </Title>
 
                     <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <Text fw={700} size="25px" color="green">
-  {product.discountPercentage && product.discountPercentage > 0
-    ? formatPrice(Math.round(product.price * (1 - product.discountPercentage / 100)))
-    : formatPrice(product.price)}
-</Text>
+                        <Text fw={700} size="25px" color="green">
+                            {product.discountPercentage && product.discountPercentage > 0
+                                ? formatPrice(Math.round(product.price * (1 - product.discountPercentage / 100)))
+                                : formatPrice(product.price)}
+                        </Text>
 
                         {product.discountPercentage && product.discountPercentage > 0 && (
                             <Text

@@ -25,44 +25,49 @@ public class Product {
     private String name;
 
     private String title;
+
     @Column(columnDefinition = "TEXT")
     private String description;
-    private String size;
-    private String type;  // NULLABLE
 
-    @Column(nullable = false)
+    @Column(length = 255)
+    private String size;
+
+    private String type;
+
+    @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal price;
 
     @Column(nullable = false)
     private Integer stock;
 
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
+    @ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.MERGE)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<ProductImage> images = new ArrayList<>();
 
-    @Column(nullable = false, columnDefinition = "BIT DEFAULT 1")
-    private Boolean available;
+    @Column(nullable = false)
+    private Boolean available = true;
 
-    @OneToOne(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true, optional = true)
     private ProductDetails productDetails;
 
     @Column(name = "is_new")
-    private Boolean isNew;
+    private Boolean isNew = false;
 
     @Column(name = "is_sale")
-    private Boolean isSale;
+    private Boolean isSale = false;
 
-    @Column(name = "discount_percentage")
-    private BigDecimal discountPercentage;
+
+    @Column(name = "discount_percentage", precision = 5, scale = 2)
+    private BigDecimal discountPercentage = BigDecimal.ZERO;
 
     @Column(name = "main_size")
     private Double mainSize;
 
-    @Column(unique = true)
+    @Column(unique = true, nullable = false)
     private String slug;
 
 }

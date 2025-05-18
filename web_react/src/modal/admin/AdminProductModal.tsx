@@ -21,10 +21,12 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { setModalOpen } = useModal();
   const isMobile = useMediaQuery('(max-width: 768px)');
+  const [discountPercentage, setDiscountPercentage] = useState<number | undefined>(undefined);
+
 
 
   const [formData, setFormData] = useState<Partial<AdminProduct & { category: { id: number; name?: string }, mainSize?: number }>>({
-    id: undefined, // 🔹 Az id most már mindig benne van
+    id: undefined, 
     name: "",
     title: "",
     size: "",
@@ -34,20 +36,20 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
     stock: 0,
     available: true,
     isNew: true,
-    isSale: true,
+    isSale: false,
     mainSize: undefined,
     category: { id: 0 },
   });
 
   useEffect(() => {
-    setModalOpen(opened); // amikor nyitva van, állítsd be
+    setModalOpen(opened); 
   }, [opened]);
 
   useEffect(() => {
     if (product && categories) {
       let selectedCategory;
 
-      // TS szerint a category típusa nem string, de valójában lehet – trükközünk:
+      
       if (typeof (product.category as any) === "string") {
         selectedCategory = categories.find((cat) => cat.name === product.category);
       } else {
@@ -65,7 +67,7 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
       setWater(product.water || "");
       setExtra(product.extra || "");
       setFact(product.fact || "");
-
+      setDiscountPercentage(product.discountPercentage ?? undefined);
       setOriginalData({ ...product });
     } else {
       resetForm();
@@ -86,7 +88,7 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
       category: { id: 0 },
       available: true,
       isNew: true,
-      isSale: true,
+      isSale: false,
     });
     setSelectedFiles([]);
     setOriginalData({});
@@ -95,6 +97,7 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
     setWater("");
     setExtra("");
     setFact("");
+    setDiscountPercentage(undefined);
   };
 
 
@@ -142,7 +145,7 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
 
   const handleSubmit = async () => {
     const formDataToSend = new FormData();
-    const updatedFields = getUpdatedFields();
+    const updatedFields = { ...formData };
 
     if (!formData.name) {
       setErrors((prev) => ({ ...prev, name: "A név kötelező!" }));
@@ -157,11 +160,19 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
     try {
       setErrors({});
       formDataToSend.append("product", JSON.stringify(updatedFields));
-      selectedFiles.forEach((file) => formDataToSend.append("files", file));
-      formDataToSend.append("light", light);
-      formDataToSend.append("water", water);
-      formDataToSend.append("extra", extra);
-      formDataToSend.append("fact", fact);
+
+      if (selectedFiles.length > 0) {
+        selectedFiles.forEach((file) => formDataToSend.append("files", file));
+      }
+
+      formDataToSend.append("light", light || "");
+      formDataToSend.append("water", water || "");
+      formDataToSend.append("extra", extra || "");
+      formDataToSend.append("fact", fact || "");
+
+      if (formData.isSale && discountPercentage !== undefined) {
+        formDataToSend.append("discountPercentage", String(discountPercentage));
+      }
 
       if (isEditing && formData.id !== undefined) {
         await updateProduct({ id: formData.id, product: formDataToSend });
@@ -172,7 +183,7 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
       resetForm();
       onClose();
     } catch (error) {
-      handleValidationError(error);
+      console.error(error);
     }
   };
 
@@ -193,9 +204,18 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
       <SimpleGrid cols={isMobile ? 1 : 2} spacing="md" verticalSpacing="sm">
         {/* Bal oldal */}
         <div>
-          <Switch label="Elérhető" checked={formData.available} onChange={(event) => setFormData({ ...formData, available: event.currentTarget.checked })} />
+          <Switch label="Elérhető" checked={formData.available ?? true} onChange={(event) => setFormData({ ...formData, available: event.currentTarget.checked })} />
           <Switch mt={2} label="Új termék" checked={formData.isNew} onChange={(event) => setFormData({ ...formData, isNew: event.currentTarget.checked })} />
           <Switch mt={2} label="Akciós termék" checked={formData.isSale} onChange={(event) => setFormData({ ...formData, isSale: event.currentTarget.checked })} />
+            {formData.isSale && (
+            <NumberInput
+              label="Kedvezmény (%)"
+              value={discountPercentage}
+              onChange={(value) => setDiscountPercentage(value ? Number(value) : undefined)}
+              min={0}
+              max={100}
+            />
+          )}
           <TextInput label="Név" value={formData.name} error={errors.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
           <TextInput label="Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
           <Textarea label="Leírás" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
@@ -205,6 +225,7 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
             multiple
             label="Termék képek"
             placeholder="Képek feltöltése"
+            value={selectedFiles.length > 0 ? selectedFiles : undefined}
             onChange={(files) => setSelectedFiles(files as File[])}
           />
         </div>
@@ -218,7 +239,7 @@ const AdminProductModal = ({ opened, onClose, product }: AdminProductModalProps)
             label="Kategória"
             placeholder={isLoading ? "Betöltés..." : "Válassz kategóriát"}
             data={categories?.map((cat) => ({ value: String(cat.id), label: cat.name })) || []}
-            value={formData.category?.id !== undefined ? String(formData.category.id) : undefined}
+            value={formData.category?.id ? String(formData.category.id) : ""}
             error={errors.category}
             onChange={(value) => {
               const selectedId = Number(value);

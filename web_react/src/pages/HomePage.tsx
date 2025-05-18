@@ -211,16 +211,34 @@ const iconMap: Record<string, JSX.Element> = {
         </ActionIcon>
       )}
       <Grid gutter="md" justify="center" style={{ flex: 1 }}>
-        {visibleSale.map((product, index) => (
-          <Grid.Col key={`${product.id}-${index}`} span={4}>
-            <Paper shadow="xs" p="md" radius="md">
-              <Image src={`${API_URL}/uploads/products/${product.imageUrls?.[0] || 'default.jpg'}`} height={150} alt={product.name} />
-              <Text fw={500} mt="sm">{product.name}</Text>
-              <Text size="sm" color="dimmed">{product.title}</Text>
-            </Paper>
-          </Grid.Col>
-        ))}
-      </Grid>
+  {visibleSale.map((product, index) => (
+    <Grid.Col key={`${product.id}-${index}`} span={4}>
+      <Paper 
+        shadow="xs" 
+        p="md" 
+        radius="md"
+        style={{ cursor: "pointer" }} 
+        onClick={() => navigate(`/products/${product.slug}`)} // 🔹 Navigáció slug alapján
+      >
+        <Image src={`${API_URL}/uploads/products/${product.imageUrls?.[0] || 'default.jpg'}`} height={150} alt={product.name} />
+        
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.5rem" }}>
+          <Text fw={500} mt="sm">{product.name}</Text>
+          {product.price && (
+            <Text 
+              size="sm" 
+              fw={500} 
+              style={{ color: product.isSale ? "#FF0000" : "#000000" }}
+            >
+              {product.price.toLocaleString("hu-HU")} Ft
+            </Text>
+          )}
+        </div>
+        <Text size="sm" color="dimmed">{product.title}</Text>
+      </Paper>
+    </Grid.Col>
+  ))}
+</Grid>
       {saleProducts.length > 3 && (
         <ActionIcon
           onClick={() => setSaleIndex((prev) => prev + 1)}
@@ -262,16 +280,34 @@ const iconMap: Record<string, JSX.Element> = {
         </ActionIcon>
       )}
       <Grid gutter="md" justify="center" style={{ flex: 1 }}>
-        {visiblePopular.map((product, index) => (
-          <Grid.Col key={`${product.id}-${index}`} span={4}>
-            <Paper shadow="xs" p="md" radius="md">
-              <Image src={`${API_URL}/uploads/products/${product.imageUrls?.[0] || 'default.jpg'}`} height={150} alt={product.name} />
-              <Text fw={500} mt="sm">{product.name}</Text>
-              <Text size="sm" color="dimmed">{product.title}</Text>
-            </Paper>
-          </Grid.Col>
-        ))}
-      </Grid>
+  {visiblePopular.map((product, index) => (
+    <Grid.Col key={`${product.id}-${index}`} span={4}>
+      <Paper 
+        shadow="xs" 
+        p="md" 
+        radius="md"
+        style={{ cursor: "pointer" }} 
+        onClick={() => navigate(`/products/${product.slug}`)} // 🔹 Navigáció slug alapján
+      >
+        <Image src={`${API_URL}/uploads/products/${product.imageUrls?.[0] || 'default.jpg'}`} height={150} alt={product.name} />
+        
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.5rem" }}>
+          <Text fw={500} mt="sm">{product.name}</Text>
+          {product.price && (
+            <Text 
+              size="sm" 
+              fw={500} 
+              style={{ color: product.isSale ? "#FF0000" : "#000000" }}
+            >
+              {product.price.toLocaleString("hu-HU")} Ft
+            </Text>
+          )}
+        </div>
+        <Text size="sm" color="dimmed">{product.title}</Text>
+      </Paper>
+    </Grid.Col>
+  ))}
+</Grid>
       {popularProducts.length > 3 && (
         <ActionIcon
           onClick={() => setPopularIndex((prev) => prev + 1)}
